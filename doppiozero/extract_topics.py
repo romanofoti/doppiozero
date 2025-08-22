@@ -4,6 +4,8 @@ Module for extracting key thematic topics from a GitHub conversation using a pro
 """
 
 from typing import List, Optional
+import os
+import json
 
 
 def extract_topics(conversation_url: str, topics_prompt_path: str, cache_path: Optional[str] = None, max_topics: Optional[int] = None) -> List[str]:
@@ -19,5 +21,35 @@ def extract_topics(conversation_url: str, topics_prompt_path: str, cache_path: O
     Returns:
         List[str]: Extracted topics as a list of strings.
     """
-    # TODO: Implement topic extraction logic
-    return []
+    # Step 1: Simulate fetching conversation text (replace with real fetch in production)
+    conversation_text = f"Conversation from {conversation_url}..."
+
+    # Step 2: Read the prompt file
+    try:
+        with open(topics_prompt_path, "r", encoding="utf-8") as f:
+            prompt = f.read()
+    except Exception as e:
+        print(f"Error reading prompt file: {e}")
+        return []
+
+    # Step 3: Simulate LLM topic extraction (replace with real LLM call)
+    # For demonstration, extract up to max_topics dummy topics
+    base_topics = ["performance", "authentication", "database", "caching", "bug-fix", "security", "documentation"]
+    if max_topics is not None:
+        topics = base_topics[:max_topics]
+    else:
+        topics = base_topics
+
+    # Step 4: Optionally cache the topics
+    if cache_path:
+        os.makedirs(cache_path, exist_ok=True)
+        # Use a simple filename based on URL
+        safe_url = conversation_url.replace('/', '_').replace(':', '_')
+        cache_file = os.path.join(cache_path, f"topics_{safe_url}.json")
+        try:
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump(topics, f)
+        except Exception as e:
+            print(f"Error writing cache file: {e}")
+
+    return topics
