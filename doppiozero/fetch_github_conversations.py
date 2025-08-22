@@ -4,6 +4,8 @@ Module for fetching and exporting data for multiple GitHub conversations.
 """
 
 from typing import List, Optional, Dict, Any
+import os
+from .fetch_github_conversation import fetch_github_conversation
 
 
 def fetch_github_conversations(
@@ -22,5 +24,16 @@ def fetch_github_conversations(
     Returns:
         List[Dict[str, Any]]: List of conversation data as JSON objects.
     """
-    # TODO: Implement bulk GitHub data fetching logic
-    return []
+    results = []
+    for url in urls:
+        try:
+            convo = fetch_github_conversation(
+                url,
+                cache_path=cache_path,
+                updated_at=updated_at
+            )
+            if convo:
+                results.append(convo)
+        except Exception as e:
+            print(f"Error fetching conversation for {url}: {e}")
+    return results
