@@ -7,6 +7,7 @@ from .pocketflow import Node, Flow
 from .utils import read_json, write_json
 from .log import info, warn, error
 
+
 class GitHubDeepResearchAgent(Node):
     def prep(self, shared):
         info("Preparing research agent...")

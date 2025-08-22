@@ -8,7 +8,12 @@ import os
 import json
 
 
-def extract_topics(conversation_url: str, topics_prompt_path: str, cache_path: Optional[str] = None, max_topics: Optional[int] = None) -> List[str]:
+def extract_topics(
+    conversation_url: str,
+    topics_prompt_path: str,
+    cache_path: Optional[str] = None,
+    max_topics: Optional[int] = None,
+) -> List[str]:
     """
     Extract key thematic topics from a GitHub conversation using a prompt file.
 
@@ -34,7 +39,15 @@ def extract_topics(conversation_url: str, topics_prompt_path: str, cache_path: O
 
     # Step 3: Simulate LLM topic extraction (replace with real LLM call)
     # For demonstration, extract up to max_topics dummy topics
-    base_topics = ["performance", "authentication", "database", "caching", "bug-fix", "security", "documentation"]
+    base_topics = [
+        "performance",
+        "authentication",
+        "database",
+        "caching",
+        "bug-fix",
+        "security",
+        "documentation",
+    ]
     if max_topics is not None:
         topics = base_topics[:max_topics]
     else:
@@ -44,7 +57,7 @@ def extract_topics(conversation_url: str, topics_prompt_path: str, cache_path: O
     if cache_path:
         os.makedirs(cache_path, exist_ok=True)
         # Use a simple filename based on URL
-        safe_url = conversation_url.replace('/', '_').replace(':', '_')
+        safe_url = conversation_url.replace("/", "_").replace(":", "_")
         cache_file = os.path.join(cache_path, f"topics_{safe_url}.json")
         try:
             with open(cache_file, "w", encoding="utf-8") as f:

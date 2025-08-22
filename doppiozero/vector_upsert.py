@@ -2,11 +2,20 @@
 vector_upsert.py
 Module for embedding text and upserting vectors with metadata into Qdrant collections.
 """
+
 from typing import Dict, Any, Optional
 import json
 
 
-def vector_upsert(text: str, collection: str, metadata: Dict[str, Any], model: Optional[str] = None, qdrant_url: Optional[str] = None, skip_if_up_to_date: Optional[str] = None, vector_id_key: Optional[str] = None) -> None:
+def vector_upsert(
+    text: str,
+    collection: str,
+    metadata: Dict[str, Any],
+    model: Optional[str] = None,
+    qdrant_url: Optional[str] = None,
+    skip_if_up_to_date: Optional[str] = None,
+    vector_id_key: Optional[str] = None,
+) -> None:
     """
     Embed text and upsert vectors with metadata into Qdrant collections.
 
@@ -35,7 +44,7 @@ def vector_upsert(text: str, collection: str, metadata: Dict[str, Any], model: O
         "metadata": metadata,
         "collection": collection,
         "model": model,
-        "qdrant_url": qdrant_url
+        "qdrant_url": qdrant_url,
     }
 
     # Step 4: Optionally skip if up-to-date

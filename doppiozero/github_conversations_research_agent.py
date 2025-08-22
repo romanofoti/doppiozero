@@ -7,7 +7,20 @@ from typing import Optional, Dict, Any, List
 import random
 
 
-def github_conversations_research_agent(question: str, collection: str, limit: int = 5, max_depth: int = 2, editor_file: Optional[str] = None, clarifying_qa: Optional[str] = None, search_modes: Optional[str] = None, cache_path: Optional[str] = None, fast_model: Optional[str] = None, reasoning_model: Optional[str] = None, parallel: bool = False, verbose: bool = False) -> Dict[str, Any]:
+def github_conversations_research_agent(
+    question: str,
+    collection: str,
+    limit: int = 5,
+    max_depth: int = 2,
+    editor_file: Optional[str] = None,
+    clarifying_qa: Optional[str] = None,
+    search_modes: Optional[str] = None,
+    cache_path: Optional[str] = None,
+    fast_model: Optional[str] = None,
+    reasoning_model: Optional[str] = None,
+    parallel: bool = False,
+    verbose: bool = False,
+) -> Dict[str, Any]:
     """
     Answer a research question by semantically searching GitHub conversations.
 
@@ -28,15 +41,16 @@ def github_conversations_research_agent(question: str, collection: str, limit: i
     Returns:
         Dict[str, Any]: Research report as a JSON object.
     """
+
     # Step 1: Simulate semantic search (replace with real search in production)
     def semantic_search(q: str, n: int) -> List[Dict[str, Any]]:
         return [
             {
                 "url": f"https://github.com/octocat/Hello-World/issues/{i}",
                 "title": f"Issue {i} about {q}",
-                "score": round(random.uniform(0.7, 1.0), 2)
+                "score": round(random.uniform(0.7, 1.0), 2),
             }
-            for i in range(1, n+1)
+            for i in range(1, n + 1)
         ]
 
     # Step 2: Generate clarifying questions (simulate)
@@ -44,7 +58,7 @@ def github_conversations_research_agent(question: str, collection: str, limit: i
         f"What aspect of '{question}' is most important?",
         f"Are you interested in recent or historical conversations?",
         f"Should we focus on issues, PRs, or discussions?",
-        f"Any specific repositories or authors to filter?"
+        f"Any specific repositories or authors to filter?",
     ]
 
     # Step 3: Simulate iterative research
@@ -59,7 +73,7 @@ def github_conversations_research_agent(question: str, collection: str, limit: i
         "question": question,
         "clarifying_questions": clarifying_questions,
         "results": all_results,
-        "summary": f"Found {len(all_results)} relevant GitHub conversations for: '{question}'"
+        "summary": f"Found {len(all_results)} relevant GitHub conversations for: '{question}'",
     }
     if verbose:
         print(f"Research agent report: {report}")

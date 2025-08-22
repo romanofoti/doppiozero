@@ -8,7 +8,12 @@ import os
 import json
 
 
-def summarize_github_conversation(conversation_url: str, executive_summary_prompt_path: str, cache_path: Optional[str] = None, updated_at: Optional[str] = None) -> str:
+def summarize_github_conversation(
+    conversation_url: str,
+    executive_summary_prompt_path: str,
+    cache_path: Optional[str] = None,
+    updated_at: Optional[str] = None,
+) -> str:
     """
     Generate an executive summary of a GitHub conversation using an LLM and a prompt file.
 
@@ -35,7 +40,7 @@ def summarize_github_conversation(conversation_url: str, executive_summary_promp
     # Step 3: Optionally cache the summary
     if cache_path:
         os.makedirs(cache_path, exist_ok=True)
-        safe_url = conversation_url.replace('/', '_').replace(':', '_')
+        safe_url = conversation_url.replace("/", "_").replace(":", "_")
         cache_file = os.path.join(cache_path, f"summary_{safe_url}.json")
         try:
             with open(cache_file, "w", encoding="utf-8") as f:

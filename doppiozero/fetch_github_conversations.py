@@ -27,11 +27,7 @@ def fetch_github_conversations(
     results = []
     for url in urls:
         try:
-            convo = fetch_github_conversation(
-                url,
-                cache_path=cache_path,
-                updated_at=updated_at
-            )
+            convo = fetch_github_conversation(url, cache_path=cache_path, updated_at=updated_at)
             if convo:
                 results.append(convo)
         except Exception as e:

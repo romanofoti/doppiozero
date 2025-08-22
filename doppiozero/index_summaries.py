@@ -7,7 +7,18 @@ from typing import List, Optional
 from .index_summary import index_summary
 
 
-def index_summaries(urls: List[str], executive_summary_prompt_path: str, topics_prompt_path: str, collection: str, cache_path: Optional[str] = None, updated_at: Optional[str] = None, model: Optional[str] = None, qdrant_url: Optional[str] = None, max_topics: Optional[int] = None, skip_if_up_to_date: bool = False) -> None:
+def index_summaries(
+    urls: List[str],
+    executive_summary_prompt_path: str,
+    topics_prompt_path: str,
+    collection: str,
+    cache_path: Optional[str] = None,
+    updated_at: Optional[str] = None,
+    model: Optional[str] = None,
+    qdrant_url: Optional[str] = None,
+    max_topics: Optional[int] = None,
+    skip_if_up_to_date: bool = False,
+) -> None:
     """
     Bulk index multiple GitHub conversations into a vector database for semantic search.
 
@@ -35,7 +46,7 @@ def index_summaries(urls: List[str], executive_summary_prompt_path: str, topics_
                 model=model,
                 qdrant_url=qdrant_url,
                 max_topics=max_topics,
-                skip_if_up_to_date=skip_if_up_to_date
+                skip_if_up_to_date=skip_if_up_to_date,
             )
         except Exception as e:
             print(f"Error indexing summary for {url}: {e}")

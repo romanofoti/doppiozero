@@ -7,7 +7,18 @@ from typing import Optional, Dict, Any
 import json
 
 
-def index_summary(conversation_url: str, executive_summary_prompt_path: str, topics_prompt_path: str, collection: str, cache_path: Optional[str] = None, updated_at: Optional[str] = None, model: Optional[str] = None, qdrant_url: Optional[str] = None, max_topics: Optional[int] = None, skip_if_up_to_date: bool = False) -> None:
+def index_summary(
+    conversation_url: str,
+    executive_summary_prompt_path: str,
+    topics_prompt_path: str,
+    collection: str,
+    cache_path: Optional[str] = None,
+    updated_at: Optional[str] = None,
+    model: Optional[str] = None,
+    qdrant_url: Optional[str] = None,
+    max_topics: Optional[int] = None,
+    skip_if_up_to_date: bool = False,
+) -> None:
     """
     Index a GitHub conversation summary in a vector database for semantic search.
 
@@ -30,7 +41,7 @@ def index_summary(conversation_url: str, executive_summary_prompt_path: str, top
         "author": "octocat",
         "state": "open",
         "created_at": "2025-08-01T12:00:00Z",
-        "updated_at": "2025-08-20T15:00:00Z"
+        "updated_at": "2025-08-20T15:00:00Z",
     }
 
     # Step 2: Simulate executive summary
@@ -67,13 +78,14 @@ def index_summary(conversation_url: str, executive_summary_prompt_path: str, top
         "topics": topics,
         "collection": collection,
         "model": model,
-        "qdrant_url": qdrant_url
+        "qdrant_url": qdrant_url,
     }
     # Step 5: Optionally cache the payload
     if cache_path:
         import os
+
         os.makedirs(cache_path, exist_ok=True)
-        safe_url = conversation_url.replace('/', '_').replace(':', '_')
+        safe_url = conversation_url.replace("/", "_").replace(":", "_")
         cache_file = os.path.join(cache_path, f"index_summary_{safe_url}.json")
         try:
             with open(cache_file, "w", encoding="utf-8") as f:
@@ -81,4 +93,6 @@ def index_summary(conversation_url: str, executive_summary_prompt_path: str, top
         except Exception as e:
             print(f"Error writing cache file: {e}")
 
-    print(f"Indexed summary for {conversation_url} in collection '{collection}' with topics: {topics}")
+    print(
+        f"Indexed summary for {conversation_url} in collection '{collection}' with topics: {topics}"
+    )

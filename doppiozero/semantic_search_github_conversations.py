@@ -7,7 +7,17 @@ from typing import List, Dict, Any, Optional
 import random
 
 
-def semantic_search_github_conversations(query: str, collection: Optional[str] = None, filters: Optional[Dict[str, Any]] = None, limit: int = 10, score_threshold: Optional[float] = None, order_by: Optional[str] = None, url: Optional[str] = None, output_format: str = "yaml", verbose: bool = False) -> List[Dict[str, Any]]:
+def semantic_search_github_conversations(
+    query: str,
+    collection: Optional[str] = None,
+    filters: Optional[Dict[str, Any]] = None,
+    limit: int = 10,
+    score_threshold: Optional[float] = None,
+    order_by: Optional[str] = None,
+    url: Optional[str] = None,
+    output_format: str = "yaml",
+    verbose: bool = False,
+) -> List[Dict[str, Any]]:
     """
     Execute semantic search against conversation summaries stored in Qdrant.
 
@@ -27,7 +37,7 @@ def semantic_search_github_conversations(query: str, collection: Optional[str] =
     """
     # Step 1: Simulate semantic search results (replace with real Qdrant search in production)
     results = []
-    for i in range(1, limit+1):
+    for i in range(1, limit + 1):
         score = round(random.uniform(0.6, 1.0), 2)
         if score_threshold and score < score_threshold:
             continue
@@ -38,8 +48,8 @@ def semantic_search_github_conversations(query: str, collection: Optional[str] =
                 "url": f"https://github.com/octocat/Hello-World/issues/{200+i}",
                 "title": f"Issue {200+i} about '{query}'",
                 "topics": ["performance", "security"],
-                "collection": collection or "summaries"
-            }
+                "collection": collection or "summaries",
+            },
         }
         # Apply simple filter simulation
         if filters:

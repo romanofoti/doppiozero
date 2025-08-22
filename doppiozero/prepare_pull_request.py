@@ -6,7 +6,9 @@ Module for generating a pull request title and body based on commits and diffs u
 from typing import Optional, Tuple
 
 
-def prepare_pull_request(base_branch: str, pr_body_prompt_path: str, llm_model: Optional[str] = None) -> Tuple[str, str]:
+def prepare_pull_request(
+    base_branch: str, pr_body_prompt_path: str, llm_model: Optional[str] = None
+) -> Tuple[str, str]:
     """
     Generate a pull request title and body based on commits and diffs using an LLM and a prompt file.
 
