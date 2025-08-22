@@ -18,5 +18,16 @@ def prepare_pull_request(base_branch: str, pr_body_prompt_path: str, llm_model: 
     Returns:
         Tuple[str, str]: Generated PR title and body.
     """
-    # TODO: Implement PR generation logic
-    return "", ""
+    # Step 1: Read the PR body prompt
+    try:
+        with open(pr_body_prompt_path, "r", encoding="utf-8") as f:
+            prompt = f.read()
+    except Exception as e:
+        print(f"Error reading PR body prompt: {e}")
+        return "", ""
+
+    # Step 2: Simulate LLM PR title/body generation
+    model_str = llm_model if llm_model else "default-llm"
+    pr_title = f"[{model_str}] PR for {base_branch}: {prompt[:40]}..."
+    pr_body = f"[{model_str}] PR body: {prompt[:120]}..."
+    return pr_title, pr_body

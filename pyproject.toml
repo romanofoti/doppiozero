@@ -11,6 +11,7 @@ python = "3.12.2"
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"
 pre-commit = "^4.2.0"
+flake8 = "^7.0.0"
 
 [build-system]
 requires = ["poetry-core"]

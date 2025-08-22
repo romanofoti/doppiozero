@@ -4,6 +4,7 @@ Module for bulk indexing multiple GitHub conversations into a vector database fo
 """
 
 from typing import List, Optional
+from .index_summary import index_summary
 
 
 def index_summaries(urls: List[str], executive_summary_prompt_path: str, topics_prompt_path: str, collection: str, cache_path: Optional[str] = None, updated_at: Optional[str] = None, model: Optional[str] = None, qdrant_url: Optional[str] = None, max_topics: Optional[int] = None, skip_if_up_to_date: bool = False) -> None:
@@ -22,5 +23,19 @@ def index_summaries(urls: List[str], executive_summary_prompt_path: str, topics_
         max_topics (Optional[int]): Maximum number of topics to extract.
         skip_if_up_to_date (bool): Skip indexing if vector exists and is up-to-date.
     """
-    # TODO: Implement bulk indexing logic
-    pass
+    for url in urls:
+        try:
+            index_summary(
+                conversation_url=url,
+                executive_summary_prompt_path=executive_summary_prompt_path,
+                topics_prompt_path=topics_prompt_path,
+                collection=collection,
+                cache_path=cache_path,
+                updated_at=updated_at,
+                model=model,
+                qdrant_url=qdrant_url,
+                max_topics=max_topics,
+                skip_if_up_to_date=skip_if_up_to_date
+            )
+        except Exception as e:
+            print(f"Error indexing summary for {url}: {e}")
