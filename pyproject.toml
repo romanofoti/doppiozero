@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "doppiozero"
+version = "0.1.0"
+description = "Python library for agentic development."
+authors = ["Romano Foti <foti.romano@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "3.12.2"
+
+[tool.poetry.group.dev.dependencies]
+black = "^25.1.0"
+pre-commit = "^4.2.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
