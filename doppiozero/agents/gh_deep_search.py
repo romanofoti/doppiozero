@@ -9,52 +9,181 @@ from ..agent.log import info, warn, error
 
 # Node definitions (stubs, to be implemented)
 class InitialResearchNode(Node):
-    def exec(self, shared):
-        info("Initial research node: bootstrapping context.")
-        return "clarify"
+    def prep(self, shared):
+        info("=== INITIAL RESEARCH PHASE ===")
+        info(f"Starting initial semantic search for: {shared['request']}")
+        # Extract configuration and build semantic query
+        # Placeholder: build search plan
+        return {"query": shared["request"]}
+
+    def exec(self, plan):
+        info("Executing initial semantic search and enriching results...")
+        # Placeholder: simulate search results
+        results = [
+            {
+                "url": "https://github.com/example/conversation/1",
+                "summary": "Example summary",
+                "score": 0.95,
+                "conversation": {},
+            }
+        ]
+        return results
+
+    def post(self, shared, prep_res, exec_res):
+        shared["memory"] = {"hits": exec_res, "notes": [], "search_queries": [shared["request"]]}
+        info(f"✓ Initial research complete: {len(exec_res)} conversations collected")
+        return None
 
 
 class AskClarifyingNode(Node):
-    def exec(self, shared):
-        info("Ask clarifying node: generating clarifying questions.")
-        return "plan"
+    def prep(self, shared):
+        info("=== CLARIFYING QUESTIONS PHASE ===")
+        # Placeholder: generate clarifying questions
+        return ["What is the main goal?", "Are there specific repos to focus on?"]
+
+    def exec(self, questions):
+        info("Presenting clarifying questions to user...")
+        # Placeholder: simulate user response
+        clarifications = "No further clarifications."
+        return clarifications
+
+    def post(self, shared, prep_res, exec_res):
+        shared["clarifications"] = exec_res
+        info("Clarifications stored.")
+        return None
 
 
 class PlannerNode(Node):
-    def exec(self, shared):
-        info("Planner node: decomposing research question and planning next step.")
-        return "retrieve"
+    def prep(self, shared):
+        info("=== PLANNING PHASE ===")
+        # Analyze context and generate search plans
+        # Placeholder: create semantic and keyword search plans
+        return {
+            "semantic": {"query": shared["request"] + " implementation details"},
+            "keyword": {"query": "repo:example is:issue"},
+        }
+
+    def exec(self, plan):
+        info("Transforming queries into search plans...")
+        # Placeholder: return list of search plans
+        return [
+            {"tool": "semantic", "query": plan["semantic"]["query"]},
+            {"tool": "keyword", "query": plan["keyword"]["query"]},
+        ]
+
+    def post(self, shared, prep_res, exec_res):
+        shared["next_search_plans"] = exec_res
+        info(f"✓ Planning complete, generated {len(exec_res)} search plans")
+        return None
 
 
 class RetrieverNode(Node):
-    def exec(self, shared):
-        info("Retriever node: executing search plan and fetching conversations.")
-        # Simulate branching: continue for more, final for report
-        return "final" if shared.get("done") else "continue"
+    def prep(self, shared):
+        info("=== RETRIEVAL PHASE ===")
+        return shared.get("next_search_plans", [])
+
+    def exec(self, search_plans):
+        info("Executing search operations and retrieving data...")
+        # Placeholder: simulate retrieval and enrichment
+        results = [
+            {
+                "url": "https://github.com/example/conversation/2",
+                "summary": "Retrieved summary",
+                "score": 0.90,
+                "search_mode": "semantic",
+                "conversation": {},
+            }
+        ]
+        return results
+
+    def post(self, shared, prep_res, exec_res):
+        shared["memory"]["hits"].extend(exec_res)
+        shared["memory"]["search_queries"].append(", ".join([plan["query"] for plan in prep_res]))
+        info(f"Added {len(exec_res)} new conversations to memory.")
+        shared["current_depth"] = shared.get("current_depth", 0) + 1
+        # Simulate workflow branching
+        if shared["current_depth"] < shared["max_depth"]:
+            return "continue"
+        else:
+            return "final"
 
 
 class ParallelRetrieverNode(RetrieverNode):
-    def exec(self, shared):
-        info("Parallel retriever node: concurrent search execution.")
-        return super().exec(shared)
+    def prep(self, shared):
+        info("=== PARALLEL RETRIEVAL PHASE ===")
+        return shared.get("next_search_plans", [])
+
+    def exec(self, search_plans):
+        info("Executing parallel search operations...")
+        # Placeholder: simulate parallel retrieval
+        results = [
+            {
+                "url": "https://github.com/example/conversation/3",
+                "summary": "Parallel retrieved summary",
+                "score": 0.92,
+                "search_mode": "keyword",
+                "conversation": {},
+            }
+        ]
+        return results
 
 
 class ContextCompactionNode(Node):
-    def exec(self, shared):
-        info("Context compaction node: pruning context for LLM/memory constraints.")
+    def prep(self, shared):
+        info("=== CONTEXT COMPACTION PHASE ===")
+        # Placeholder: compact context
+        return shared.get("memory", {})
+
+    def exec(self, context):
+        info("Compacting context for LLM constraints...")
+        # Placeholder: simulate compaction
+        return context
+
+    def post(self, shared, prep_res, exec_res):
+        shared["memory"] = exec_res
+        shared["compaction_attempts"] = shared.get("compaction_attempts", 0) + 1
+        info("Context compaction complete.")
         return "retry"
 
 
 class ClaimVerifierNode(Node):
-    def exec(self, shared):
-        info("Claim verifier node: verifying claims/hypotheses.")
+    def prep(self, shared):
+        info("=== CLAIM VERIFICATION PHASE ===")
+        # Placeholder: extract claims from draft answer
+        claims = ["Claim 1", "Claim 2"]
+        return claims
+
+    def exec(self, claims):
+        info("Verifying claims against evidence...")
+        # Placeholder: simulate verification
+        results = [{"claim": claim, "supported": True} for claim in claims]
+        return results
+
+    def post(self, shared, prep_res, exec_res):
+        shared["claim_verification"] = {
+            "total_claims": len(prep_res),
+            "supported_claims": [r["claim"] for r in exec_res if r["supported"]],
+            "unsupported_claims": [r["claim"] for r in exec_res if not r["supported"]],
+            "verification_errors": 0,
+        }
+        info(f"✓ Claim verification complete: {len(exec_res)} claims checked.")
+        if shared["claim_verification"]["unsupported_claims"]:
+            return "fix"
         return "ok"
 
 
 class ParallelClaimVerifierNode(ClaimVerifierNode):
-    def exec(self, shared):
-        info("Parallel claim verifier node: concurrent verification.")
-        return super().exec(shared)
+    def prep(self, shared):
+        info("=== PARALLEL CLAIM VERIFICATION PHASE ===")
+        # Placeholder: extract claims for parallel verification
+        claims = ["Claim 1", "Claim 2"]
+        return claims
+
+    def exec(self, claims):
+        info("Verifying claims in parallel...")
+        # Placeholder: simulate parallel verification
+        results = [{"claim": claim, "supported": True} for claim in claims]
+        return results
 
 
 class FinalReportNode(Node):
