@@ -1,7 +1,4 @@
-"""
-github_deep_research_agent.py
-Core agent logic for multi-turn research and orchestration.
-"""
+"""Core agent logic for multi-turn research and orchestration."""
 
 from .pocketflow import Node, Flow
 from .utils import read_json, write_json
