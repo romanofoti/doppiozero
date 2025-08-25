@@ -23,7 +23,37 @@ def main():
     args = parser.parse_args()
 
     from doppiozero.utils.scripts_common import read_urls_from_stdin_or_file
-    from doppiozero.index_summaries import index_summaries
+
+    def index_summaries(
+        urls,
+        executive_summary_prompt_path,
+        topics_prompt_path,
+        collection,
+        cache_path=None,
+        updated_at=None,
+        model=None,
+        qdrant_url=None,
+        max_topics=None,
+        skip_if_up_to_date=False,
+    ):
+        from doppiozero.index_summary import index_summary
+
+        for url in urls:
+            try:
+                index_summary(
+                    conversation_url=url,
+                    executive_summary_prompt_path=executive_summary_prompt_path,
+                    topics_prompt_path=topics_prompt_path,
+                    collection=collection,
+                    cache_path=cache_path,
+                    updated_at=updated_at,
+                    model=model,
+                    qdrant_url=qdrant_url,
+                    max_topics=max_topics,
+                    skip_if_up_to_date=skip_if_up_to_date,
+                )
+            except Exception as e:
+                print(f"Error indexing summary for {url}: {e}")
 
     urls = read_urls_from_stdin_or_file(args.file)
     index_summaries(

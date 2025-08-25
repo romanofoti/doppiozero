@@ -11,7 +11,18 @@ def main():
     parser.add_argument("--llm-model", default=None)
     args = parser.parse_args()
 
-    from doppiozero.prepare_pull_request import prepare_pull_request
+    def prepare_pull_request(base_branch: str, pr_body_prompt_path: str, llm_model: None = None):
+        try:
+            with open(pr_body_prompt_path, "r", encoding="utf-8") as f:
+                prompt = f.read()
+        except Exception as e:
+            print(f"Error reading PR body prompt: {e}")
+            return "", ""
+
+        model_str = llm_model if llm_model else "default-llm"
+        pr_title = f"[{model_str}] PR for {base_branch}: {prompt[:40]}..."
+        pr_body = f"[{model_str}] PR body: {prompt[:120]}..."
+        return pr_title, pr_body
 
     title, body = prepare_pull_request(
         args.base_branch, args.pr_body_prompt_path, llm_model=args.llm_model

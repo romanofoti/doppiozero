@@ -10,7 +10,17 @@ def main():
     parser.add_argument("--llm-model", default=None)
     args = parser.parse_args()
 
-    from doppiozero.prepare_commit import prepare_commit
+    def prepare_commit(commit_message_prompt_path: str, llm_model: None = None) -> str:
+        try:
+            with open(commit_message_prompt_path, "r", encoding="utf-8") as f:
+                prompt = f.read()
+        except Exception as e:
+            print(f"Error reading commit message prompt: {e}")
+            return ""
+
+        model_str = llm_model if llm_model else "default-llm"
+        commit_message = f"[{model_str}] Semantic commit message: {prompt[:60]}..."
+        return commit_message
 
     msg = prepare_commit(args.commit_message_prompt_path, llm_model=args.llm_model)
     print(msg)

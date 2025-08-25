@@ -9,7 +9,14 @@ def main():
     parser.add_argument("--target-dir", default=".")
     args = parser.parse_args()
 
-    from doppiozero.select_folder import select_folder
+    import os
+
+    def select_folder(target_dir: str) -> str:
+        folders = [f.path for f in os.scandir(target_dir) if f.is_dir()]
+        if not folders:
+            return ""
+        folders.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+        return folders[0]
 
     folder = select_folder(args.target_dir)
     if folder:
