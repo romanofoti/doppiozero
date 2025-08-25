@@ -61,11 +61,11 @@ def index_summary(
     except Exception as e:
         print(f"Error reading topics prompt: {e}")
         topics_prompt = ""
-    base_topics = ["performance", "authentication", "database", "caching", "bug-fix"]
+    base_topic_ls = ["performance", "authentication", "database", "caching", "bug-fix"]
     if max_topics is not None:
-        topics_ls = base_topics[:max_topics]
+        topic_ls = base_topic_ls[:max_topics]
     else:
-        topics_ls = base_topics
+        topic_ls = base_topic_ls
 
     # Step 4: Simulate upsert to vector DB (Qdrant)
     vector_payload_dc = {
@@ -76,7 +76,7 @@ def index_summary(
         "created_at": conversation_data_dc["created_at"],
         "updated_at": conversation_data_dc["updated_at"],
         "executive_summary": executive_summary,
-        "topics": topics_ls,
+        "topics": topic_ls,
         "collection": collection,
         "model": model,
         "qdrant_url": qdrant_url,
@@ -93,5 +93,5 @@ def index_summary(
             print(f"Error writing cache file: {e}")
 
     print(
-        f"Indexed summary for {conversation_url} in collection '{collection}' with topics: {topics_ls}"
+        f"Indexed summary for {conversation_url} in collection '{collection}' with topics: {topic_ls}"
     )

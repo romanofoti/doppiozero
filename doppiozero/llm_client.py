@@ -23,7 +23,7 @@ OPENAI_API_BASE = os.environ.get("OPENAI_API_BASE", "https://api.openai.com")
 def _call_openai_api(path: str, payload: dict) -> dict:
     url = OPENAI_API_BASE.rstrip("/") + path
     data = json.dumps(payload).encode("utf-8")
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {OPENAI_API_KEY}"}
+    headers_dc = {"Content-Type": "application/json", "Authorization": f"Bearer {OPENAI_API_KEY}"}
     req = urllib.request.Request(url, data=data, headers=headers)
     ctx = ssl.create_default_context()
     with urllib.request.urlopen(req, context=ctx) as resp:
@@ -39,17 +39,17 @@ def generate(prompt: str, model: Optional[str] = None, max_tokens: int = 1024) -
     """
     if OPENAI_API_KEY:
         model_name = model or os.environ.get("SUMMARIZATION_MODEL", "gpt-3.5-turbo")
-        payload = {
+        payload_dc = {
             "model": model_name,
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": max_tokens,
         }
         try:
-            resp = _call_openai_api("/v1/chat/completions", payload)
+            resp = _call_openai_api("/v1/chat/completions", payload_dc)
             # Extract content
-            choices = resp.get("choices") or []
-            if choices:
-                return choices[0].get("message", {}).get("content", "")
+            choice_ls = resp.get("choices") or []
+            if choice_ls:
+                return choice_ls[0].get("message", {}).get("content", "")
             return ""
         except Exception as e:
             raise RuntimeError(f"LLM request failed: {e}")
@@ -67,22 +67,22 @@ def embed(text: str, model: Optional[str] = None) -> List[float]:
     """
     if OPENAI_API_KEY:
         model_name = model or os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
-        payload = {"model": model_name, "input": text}
+        payload_dc = {"model": model_name, "input": text}
         try:
-            resp = _call_openai_api("/v1/embeddings", payload)
-            data = resp.get("data") or []
-            if data:
-                return data[0].get("embedding", [])
+            resp = _call_openai_api("/v1/embeddings", payload_dc)
+            data_ls = resp.get("data") or []
+            if data_ls:
+                return data_ls[0].get("embedding", [])
             return []
         except Exception as e:
             raise RuntimeError(f"Embeddings request failed: {e}")
     # Fallback deterministic pseudo-embedding
     # Simple hash-based embedding into 128-d vector
-    v = [0.0] * 128
+    v_ls = [0.0] * 128
     h = 0
     for ch in text:
         h = (h * 31 + ord(ch)) & 0xFFFFFFFF
     # Spread h into vector deterministically
-    for i in range(len(v)):
-        v[i] = ((h >> (i % 32)) & 0xFF) / 255.0
-    return v
+    for i in range(len(v_ls)):
+        v_ls[i] = ((h >> (i % 32)) & 0xFF) / 255.0
+    return v_ls

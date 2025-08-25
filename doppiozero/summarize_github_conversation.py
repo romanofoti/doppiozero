@@ -38,10 +38,10 @@ def summarize_github_conversation(
         return ""
 
     # Step 2: Fetch conversation and construct LLM prompt
-    convo = fetch_github_conversation(
+    convo_dc = fetch_github_conversation(
         conversation_url, cache_path=cache_path, updated_at=updated_at
     )
-    convo_text = json.dumps(convo, indent=2)[:8000]
+    convo_text = json.dumps(convo_dc, indent=2)[:8000]
     full_prompt = prompt.replace("{{conversation}}", convo_text).replace(
         "{{url}}", conversation_url
     )

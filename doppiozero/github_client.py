@@ -56,7 +56,7 @@ class GitHubClient:
 
         comment_ls = [self._normalize_comment(c) for c in issue.get_comments()]
 
-        normalized = {
+        normalized_dc = {
             "type": "issue",
             "url": getattr(issue, "html_url", None),
             "owner": owner,
@@ -78,7 +78,7 @@ class GitHubClient:
             ),
             "comments": comment_ls,
         }
-        return normalized
+        return normalized_dc
 
     def fetch_pr(self, owner: str, repo: str, number: str) -> Dict[str, Any]:
         repository = self.gh.get_repo(f"{owner}/{repo}")
@@ -119,7 +119,7 @@ class GitHubClient:
         except Exception:
             diff = None
 
-        normalized = {
+        normalized_dc = {
             "type": "pull_request",
             "url": getattr(pr, "html_url", None),
             "owner": owner,
@@ -145,7 +145,7 @@ class GitHubClient:
             "commits": commit_ls,
             "diff": diff,
         }
-        return normalized
+        return normalized_dc
 
     def fetch_discussion(self, owner: str, repo: str, number: str) -> Dict[str, Any]:
         # Attempt to call via REST

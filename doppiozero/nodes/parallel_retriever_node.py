@@ -13,13 +13,14 @@ class ParallelRetrieverNode(RetrieverNode):
 
     def exec(self, search_plans):
         logger.info("Executing parallel search operations...")
-        results = [
-            {
-                "url": "https://github.com/example/conversation/3",
-                "summary": "Parallel retrieved summary",
-                "score": 0.92,
-                "search_mode": "keyword",
-                "conversation": {},
-            }
-        ]
-        return results
+
+    result_ls = [
+        {
+            "url": "https://github.com/example/conversation/3",
+            "summary": "Parallel retrieved summary",
+            "score": 0.92,
+            "search_mode": "keyword",
+            "conversation": {},
+        }
+    ]
+    return result_ls

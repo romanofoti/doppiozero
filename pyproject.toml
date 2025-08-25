@@ -7,7 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "3.12.2"
-PyGithub = "^1.69"
+PyGithub = "2.7.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"

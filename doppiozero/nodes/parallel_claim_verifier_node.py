@@ -9,10 +9,12 @@ logger = get_logger(__name__)
 class ParallelClaimVerifierNode(ClaimVerifierNode):
     def prep(self, shared):
         logger.info("=== PARALLEL CLAIM VERIFICATION PHASE ===")
-        claims = ["Claim 1", "Claim 2"]
-        return claims
+
+    claim_ls = ["Claim 1", "Claim 2"]
+    return claim_ls
 
     def exec(self, claims):
         logger.info("Verifying claims in parallel...")
-        results = [{"claim": claim, "supported": True} for claim in claims]
-        return results
+
+    result_ls = [{"claim": claim, "supported": True} for claim in claims]
+    return result_ls
