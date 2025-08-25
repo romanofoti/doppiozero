@@ -7,6 +7,9 @@ from typing import Optional
 import os
 import json
 
+from .fetch_github_conversation import fetch_github_conversation
+from .llm_client import generate
+
 
 def summarize_github_conversation(
     conversation_url: str,
@@ -34,8 +37,22 @@ def summarize_github_conversation(
         print(f"Error reading executive summary prompt: {e}")
         return ""
 
-    # Step 2: Simulate LLM summary generation
-    summary = f"Executive summary for {conversation_url}: {prompt[:120]}..."
+    # Step 2: Fetch conversation and construct LLM prompt
+    convo = fetch_github_conversation(
+        conversation_url, cache_path=cache_path, updated_at=updated_at
+    )
+    convo_text = json.dumps(convo, indent=2)[:8000]
+    full_prompt = prompt.replace("{{conversation}}", convo_text).replace(
+        "{{url}}", conversation_url
+    )
+
+    # Step 3: Call LLM
+    try:
+        summary = generate(full_prompt)
+    except Exception as e:
+        print(f"LLM summarization failed: {e}")
+        # Fallback stub
+        summary = f"Executive summary for {conversation_url}: {prompt[:120]}..."
 
     # Step 3: Optionally cache the summary
     if cache_path:

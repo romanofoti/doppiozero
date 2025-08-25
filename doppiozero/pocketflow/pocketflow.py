@@ -87,7 +87,12 @@ class Flow(BaseNode):
         return start
 
     def get_next_node(self, curr, action):
-        nxt = curr.successors.get(action or "default")
+        # Normalize action to a string key; if a node returned a structured
+        # result (e.g. a dict), treat it as the default transition. This
+        # avoids TypeError for unhashable action values and makes flows more
+        # tolerant to nodes that return structured results.
+        key = action if isinstance(action, str) else "default"
+        nxt = curr.successors.get(key)
         if not nxt and curr.successors:
             warnings.warn(f"Flow ends: '{action}' not found in {list(curr.successors)}")
         return nxt
@@ -110,7 +115,11 @@ class Flow(BaseNode):
         return self.post(shared, p, o)
 
     def post(self, shared, prep_res, exec_res):
-        return exec_res
+        # If a flow-level structured result (e.g. final_report) was stored
+        # in shared by nodes (such as FinalReportNode), prefer returning
+        # that instead of the raw exec_res. This prevents accidentally
+        # treating a dict as a transition action in the orchestrator.
+        return shared.get("final_report", exec_res)
 
 
 class BatchFlow(Flow):

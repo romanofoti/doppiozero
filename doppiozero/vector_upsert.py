@@ -6,6 +6,8 @@ Module for embedding text and upserting vectors with metadata into Qdrant collec
 from typing import Dict, Any, Optional
 import json
 
+from .llm_client import embed
+
 
 def vector_upsert(
     text: str,
@@ -28,8 +30,8 @@ def vector_upsert(
         skip_if_up_to_date (Optional[str]): Metadata key for timestamp optimization.
         vector_id_key (Optional[str]): Metadata field for ID generation.
     """
-    # Step 1: Simulate embedding generation
-    embedding = [round(hash(text) % 1000 / 1000, 4) for _ in range(10)]
+    # Step 1: Generate embedding via llm_client (fallback deterministic inside)
+    embedding = embed(text, model=model)
 
     # Step 2: Simulate vector ID generation
     if vector_id_key and vector_id_key in metadata:

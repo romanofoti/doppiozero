@@ -19,6 +19,7 @@ class FinalReportNode(Node):
     )
 
     def __init__(self, logger=None):
+        super().__init__()
         self.logger = logger or logging.getLogger(__name__)
         self.shared = None
 
@@ -57,7 +58,18 @@ class FinalReportNode(Node):
 
     def exec(self, prompt):
         try:
-            draft_answer = self.call_llm(prompt, self.shared["models"]["reasoning"])
+            # Safely obtain the reasoning model from shared configuration.
+            # Use a sensible default model name when the key is missing so the
+            # flow does not crash due to a KeyError. Downstream callers (e.g.
+            # llm_client) will decide whether the model name maps to a real
+            # provider or a deterministic stub.
+            models_cfg = self.shared.get("models", {}) if self.shared else {}
+            reasoning_model = models_cfg.get("reasoning", models_cfg.get("fast", "default"))
+            if "reasoning" not in models_cfg:
+                self.logger.debug(
+                    f"No explicit reasoning model configured; falling back to '{reasoning_model}'"
+                )
+            draft_answer = self.call_llm(prompt, reasoning_model)
             self.shared["draft_answer"] = draft_answer
             return draft_answer
         except Exception as e:
@@ -105,6 +117,19 @@ class FinalReportNode(Node):
             verification_note = f", {cv['total_claims']} claims verified ({len(cv['supported_claims'])} supported, {len(cv['unsupported_claims'])} unsupported)"
         self.logger.info(
             f"\n\n✓ Research complete! Total conversations analyzed: {len(shared['memory']['hits'])}{compaction_note}{verification_note}"
+        )
+        # Store a structured final report in shared state so the EndNode can
+        # return it to the caller. Keep both the raw draft and useful metadata.
+        shared.setdefault("final_report", {})
+        shared["final_report"].update(
+            {
+                "draft": exec_res,
+                "num_conversations": len(shared["memory"]["hits"]),
+                "claims_verified": len(
+                    shared.get("claim_verification", {}).get("supported_claims", [])
+                ),
+                "unsupported_claims": shared.get("unsupported_claims", []),
+            }
         )
         return "complete"
 

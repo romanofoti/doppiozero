@@ -1,0 +1,1 @@
+You are an expert analyst. Summarize the following GitHub conversation and provide key findings, timeline, and citations.\n\n{{conversation}}\n\nProvide a concise executive summary.
