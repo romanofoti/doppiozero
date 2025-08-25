@@ -3,23 +3,24 @@ GitHubDeepResearchAgent - Multi-Stage Research Pipeline for GitHub Conversations
 """
 
 from ..pocketflow.pocketflow import Node, Flow
-from ..utils.utils import get_logger as setup_logger
 from ..utils.utils import get_logger
 
+# Import nodes at module top-level. If circular imports appear, fix the
+# referencing module rather than delaying imports here.
+from ..nodes import (
+    InitialResearchNode,
+    AskClarifyingNode,
+    PlannerNode,
+    RetrieverNode,
+    ParallelRetrieverNode,
+    ContextCompactionNode,
+    ClaimVerifierNode,
+    ParallelClaimVerifierNode,
+    FinalReportNode,
+    EndNode,
+)
+
 logger = get_logger(__name__)
-
-
-# Node definitions (stubs, to be implemented)
-class InitialResearchNode(Node):
-    def prep(self, shared):
-        logger.info("=== INITIAL RESEARCH PHASE ===")
-        logger.info(f"Starting initial semantic search for: {shared['request']}")
-        # Extract configuration and build semantic query
-        # Placeholder: build search plan
-        return {"query": shared["request"]}
-
-    def exec(self, plan):
-        logger.info("Executing initial semantic search and enriching results...")
 
 
 def start(request: str, options: dict):
