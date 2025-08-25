@@ -1,0 +1,47 @@
+#!/usr/bin/env python3
+"""CLI wrapper for vector-upsert: embed stdin text and upsert to Qdrant via library code."""
+import argparse
+import sys
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="vector-upsert")
+    parser.add_argument("--collection", required=True, help="Qdrant collection name")
+    parser.add_argument("--metadata", required=True, help="JSON metadata string")
+    parser.add_argument(
+        "--vector-id-key", default="url", help="Metadata key to use for vector id generation"
+    )
+    parser.add_argument("--model", default=None, help="Embedding model")
+    parser.add_argument("--qdrant-url", default="http://localhost:6333", help="Qdrant base URL")
+    parser.add_argument(
+        "--skip-if-up-to-date", default=None, help="Timestamp key name to check for up-to-date"
+    )
+    args = parser.parse_args()
+
+    # Read stdin text
+    text = sys.stdin.read()
+    if not text:
+        print("Error: No input provided on stdin", file=sys.stderr)
+        sys.exit(1)
+
+    from doppiozero.vector_upsert import vector_upsert
+    import json
+
+    metadata = json.loads(args.metadata)
+    try:
+        vector_upsert(
+            text_content=text,
+            metadata=metadata,
+            collection=args.collection,
+            vector_id_key=args.vector_id_key,
+            model=args.model,
+            qdrant_url=args.qdrant_url,
+            skip_if_up_to_date=args.skip_if_up_to_date,
+        )
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

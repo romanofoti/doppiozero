@@ -5,6 +5,7 @@ Module for indexing a GitHub conversation summary in a vector database for seman
 
 from typing import Optional, Dict, Any
 import json
+import os
 
 
 def index_summary(
@@ -82,8 +83,6 @@ def index_summary(
     }
     # Step 5: Optionally cache the payload
     if cache_path:
-        import os
-
         os.makedirs(cache_path, exist_ok=True)
         safe_url = conversation_url.replace("/", "_").replace(":", "_")
         cache_file = os.path.join(cache_path, f"index_summary_{safe_url}.json")

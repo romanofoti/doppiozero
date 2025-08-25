@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+"""CLI wrapper for index-summary: orchestrate indexing of a single GitHub conversation."""
+import argparse
+import sys
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="index-summary")
+    parser.add_argument("input", help="GitHub URL or owner/repo/type/number")
+    parser.add_argument("--executive-summary-prompt-path", required=True)
+    parser.add_argument("--topics-prompt-path", required=True)
+    parser.add_argument("--collection", required=True)
+    parser.add_argument("--cache-path", default=None)
+    parser.add_argument("--updated-at", default=None)
+    parser.add_argument("--model", default=None)
+    parser.add_argument("--qdrant-url", default=None)
+    parser.add_argument("--max-topics", type=int, default=None)
+    parser.add_argument("--skip-if-up-to-date", action="store_true")
+    args = parser.parse_args()
+
+    from doppiozero.index_summary import index_summary
+
+    try:
+        index_summary(
+            conversation_url=args.input,
+            executive_summary_prompt_path=args.executive_summary_prompt_path,
+            topics_prompt_path=args.topics_prompt_path,
+            collection=args.collection,
+            cache_path=args.cache_path,
+            updated_at=args.updated_at,
+            model=args.model,
+            qdrant_url=args.qdrant_url,
+            max_topics=args.max_topics,
+            skip_if_up_to_date=args.skip_if_up_to_date,
+        )
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

@@ -22,6 +22,12 @@ from ..nodes import (
 
 logger = get_logger(__name__)
 
+# Top-level pragmatic helper imports used by the convenience orchestration
+from ..search_github_conversations import search_github_conversations
+from ..fetch_github_conversation import fetch_github_conversation
+from ..summarize_github_conversation import summarize_github_conversation
+from ..vector_upsert import vector_upsert
+
 
 class GitHubAgent:
     """Encapsulates the GitHub Conversations Research Agent.

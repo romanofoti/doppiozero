@@ -1,0 +1,52 @@
+#!/usr/bin/env python3
+"""CLI wrapper for semantic-search-github-conversations."""
+import argparse
+import json
+import sys
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="semantic-search-github-conversations")
+    parser.add_argument("query", help="Free-text query")
+    parser.add_argument("--collection", default=None)
+    parser.add_argument(
+        "--filters", action="append", default=[], help="Filter key:value (repeatable)"
+    )
+    parser.add_argument("--limit", type=int, default=10)
+    parser.add_argument("--score-threshold", type=float, default=None)
+    parser.add_argument("--order-by", default=None)
+    parser.add_argument("--url", default=None)
+    parser.add_argument("--format", choices=["yaml", "json"], default="yaml")
+    parser.add_argument("--verbose", action="store_true")
+    args = parser.parse_args()
+
+    # Build filter dict from key:value pairs
+    filters = {}
+    for f in args.filters:
+        if ":" in f:
+            k, v = f.split(":", 1)
+            filters[k] = v
+
+    from doppiozero.semantic_search_github_conversations import semantic_search_github_conversations
+
+    results = semantic_search_github_conversations(
+        args.query,
+        collection=args.collection,
+        filters=filters or None,
+        limit=args.limit,
+        score_threshold=args.score_threshold,
+        order_by=args.order_by,
+        url=args.url,
+        output_format=args.format,
+        verbose=args.verbose,
+    )
+
+    if args.format == "json":
+        print(json.dumps(results, indent=2))
+    else:
+        # YAML formatting is simulated by printing JSON for now
+        print(json.dumps(results, indent=2))
+
+
+if __name__ == "__main__":
+    main()
