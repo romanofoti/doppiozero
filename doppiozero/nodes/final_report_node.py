@@ -1,7 +1,7 @@
 import json
 import logging
-from ..agent.pocketflow import Node
-from ..agent.log import info
+from ..pocketflow.pocketflow import Node
+from ..utils.utils import get_logger
 
 
 class FinalReportNode(Node):

@@ -1,14 +1,16 @@
-from ..agent.pocketflow import Node
-from ..agent.log import info
+from ..pocketflow.pocketflow import Node
+from ..utils.utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class RetrieverNode(Node):
     def prep(self, shared):
-        info("=== RETRIEVAL PHASE ===")
+        logger.info("=== RETRIEVAL PHASE ===")
         return shared.get("next_search_plans", [])
 
     def exec(self, search_plans):
-        info("Executing search operations and retrieving data...")
+        logger.info("Executing search operations and retrieving data...")
         results = [
             {
                 "url": "https://github.com/example/conversation/2",
@@ -23,7 +25,7 @@ class RetrieverNode(Node):
     def post(self, shared, prep_res, exec_res):
         shared["memory"]["hits"].extend(exec_res)
         shared["memory"]["search_queries"].append(", ".join([plan["query"] for plan in prep_res]))
-        info(f"Added {len(exec_res)} new conversations to memory.")
+        logger.info(f"Added {len(exec_res)} new conversations to memory.")
         shared["current_depth"] = shared.get("current_depth", 0) + 1
         if shared["current_depth"] < shared["max_depth"]:
             return "continue"

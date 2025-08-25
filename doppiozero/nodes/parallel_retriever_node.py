@@ -1,15 +1,18 @@
-from ..agent.pocketflow import Node
-from ..agent.log import info
+from ..pocketflow.pocketflow import Node
+from ..utils.utils import get_logger
 from .retriever_node import RetrieverNode
+
+
+logger = get_logger(__name__)
 
 
 class ParallelRetrieverNode(RetrieverNode):
     def prep(self, shared):
-        info("=== PARALLEL RETRIEVAL PHASE ===")
+        logger.info("=== PARALLEL RETRIEVAL PHASE ===")
         return shared.get("next_search_plans", [])
 
     def exec(self, search_plans):
-        info("Executing parallel search operations...")
+        logger.info("Executing parallel search operations...")
         results = [
             {
                 "url": "https://github.com/example/conversation/3",

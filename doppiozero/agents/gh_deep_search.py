@@ -2,35 +2,46 @@
 GitHubDeepResearchAgent - Multi-Stage Research Pipeline for GitHub Conversations (Python)
 """
 
-from ..agent.pocketflow import Node, Flow
-from ..agent.utils import setup_logger
-from ..agent.log import info, warn, error
+from ..pocketflow.pocketflow import Node, Flow
+from ..utils.utils import get_logger as setup_logger
+from ..utils.utils import get_logger
+
+logger = get_logger(__name__)
 
 
 # Node definitions (stubs, to be implemented)
 class InitialResearchNode(Node):
     def prep(self, shared):
-        info("=== INITIAL RESEARCH PHASE ===")
-        info(f"Starting initial semantic search for: {shared['request']}")
+        logger.info("=== INITIAL RESEARCH PHASE ===")
+        logger.info(f"Starting initial semantic search for: {shared['request']}")
         # Extract configuration and build semantic query
         # Placeholder: build search plan
         return {"query": shared["request"]}
 
     def exec(self, plan):
-        info("Executing initial semantic search and enriching results...")
+        logger.info("Executing initial semantic search and enriching results...")
 
-        from ..nodes import (
-            InitialResearchNode,
-            AskClarifyingNode,
-            PlannerNode,
-            RetrieverNode,
-            ParallelRetrieverNode,
-            ContextCompactionNode,
-            ClaimVerifierNode,
-            ParallelClaimVerifierNode,
-            FinalReportNode,
-            EndNode,
-        )
+
+def start(request: str, options: dict):
+    """Start the GitHub Conversations Research Agent workflow.
+
+    Args:
+        request: natural language research request
+        options: dict of options (collection, limit, max_depth, etc.)
+    """
+    # Delay import of nodes to avoid circular imports at module import time
+    from ..nodes import (
+        InitialResearchNode,
+        AskClarifyingNode,
+        PlannerNode,
+        RetrieverNode,
+        ParallelRetrieverNode,
+        ContextCompactionNode,
+        ClaimVerifierNode,
+        ParallelClaimVerifierNode,
+        FinalReportNode,
+        EndNode,
+    )
 
     shared = {
         "request": request,
@@ -85,4 +96,4 @@ class InitialResearchNode(Node):
     logger.info(f"Fast model: {shared['models'].get('fast', 'default')}")
     logger.info(f"Reasoning model: {shared['models'].get('reasoning', 'default')}")
 
-    flow.run(shared)
+    return flow.run(shared)

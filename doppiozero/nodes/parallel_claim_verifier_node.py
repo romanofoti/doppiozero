@@ -1,15 +1,18 @@
-from ..agent.pocketflow import Node
-from ..agent.log import info
+from ..pocketflow.pocketflow import Node
+from ..utils.utils import get_logger
 from .claim_verifier_node import ClaimVerifierNode
+
+
+logger = get_logger(__name__)
 
 
 class ParallelClaimVerifierNode(ClaimVerifierNode):
     def prep(self, shared):
-        info("=== PARALLEL CLAIM VERIFICATION PHASE ===")
+        logger.info("=== PARALLEL CLAIM VERIFICATION PHASE ===")
         claims = ["Claim 1", "Claim 2"]
         return claims
 
     def exec(self, claims):
-        info("Verifying claims in parallel...")
+        logger.info("Verifying claims in parallel...")
         results = [{"claim": claim, "supported": True} for claim in claims]
         return results

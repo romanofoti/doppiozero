@@ -1,8 +1,10 @@
-from ..agent.pocketflow import Node
-from ..agent.log import info
+from ..pocketflow.pocketflow import Node
+from ..utils.utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class EndNode(Node):
     def exec(self, shared):
-        info("End node: terminating workflow and returning results.")
+        logger.info("End node: terminating workflow and returning results.")
         return None
