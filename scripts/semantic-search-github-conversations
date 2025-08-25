@@ -2,7 +2,46 @@
 """CLI wrapper for semantic-search-github-conversations."""
 import argparse
 import json
-import sys
+import random
+
+
+def semantic_search_github_conversations(
+    query: str,
+    collection: None = None,
+    filters: None = None,
+    limit: int = 10,
+    score_threshold: None = None,
+    order_by: None = None,
+    url: None = None,
+    output_format: str = "yaml",
+    verbose: bool = False,
+):
+    results = []
+    for i in range(1, limit + 1):
+        score = round(random.uniform(0.6, 1.0), 2)
+        if score_threshold and score < score_threshold:
+            continue
+        result = {
+            "id": f"qdrant_{i}",
+            "score": score,
+            "payload": {
+                "url": f"https://github.com/octocat/Hello-World/issues/{200+i}",
+                "title": f"Issue {200+i} about '{query}'",
+                "topics": ["performance", "security"],
+                "collection": collection or "summaries",
+            },
+        }
+        if filters:
+            match = True
+            for k, v in filters.items():
+                if k in result["payload"] and v not in str(result["payload"][k]):
+                    match = False
+            if not match:
+                continue
+        results.append(result)
+    if verbose:
+        print(f"Semantic search results: {results}")
+    return results
 
 
 def main():
@@ -26,46 +65,6 @@ def main():
         if ":" in f:
             k, v = f.split(":", 1)
             filters[k] = v
-
-    import random
-
-    def semantic_search_github_conversations(
-        query: str,
-        collection: None = None,
-        filters: None = None,
-        limit: int = 10,
-        score_threshold: None = None,
-        order_by: None = None,
-        url: None = None,
-        output_format: str = "yaml",
-        verbose: bool = False,
-    ):
-        results = []
-        for i in range(1, limit + 1):
-            score = round(random.uniform(0.6, 1.0), 2)
-            if score_threshold and score < score_threshold:
-                continue
-            result = {
-                "id": f"qdrant_{i}",
-                "score": score,
-                "payload": {
-                    "url": f"https://github.com/octocat/Hello-World/issues/{200+i}",
-                    "title": f"Issue {200+i} about '{query}'",
-                    "topics": ["performance", "security"],
-                    "collection": collection or "summaries",
-                },
-            }
-            if filters:
-                match = True
-                for k, v in filters.items():
-                    if k in result["payload"] and v not in str(result["payload"][k]):
-                        match = False
-                if not match:
-                    continue
-            results.append(result)
-        if verbose:
-            print(f"Semantic search results: {results}")
-        return results
 
     results = semantic_search_github_conversations(
         args.query,

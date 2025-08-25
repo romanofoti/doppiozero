@@ -2,6 +2,7 @@
 """CLI wrapper for index-summary: orchestrate indexing of a single GitHub conversation."""
 import argparse
 import sys
+from doppiozero.index_summary import index_summary
 
 
 def main():
@@ -17,8 +18,6 @@ def main():
     parser.add_argument("--max-topics", type=int, default=None)
     parser.add_argument("--skip-if-up-to-date", action="store_true")
     args = parser.parse_args()
-
-    from doppiozero.index_summary import index_summary
 
     try:
         index_summary(

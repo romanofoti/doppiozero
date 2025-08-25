@@ -2,7 +2,18 @@
 """CLI wrapper for github-conversations-research-agent."""
 import argparse
 import json
-import sys
+import random
+
+
+def semantic_search(q: str, n: int):
+    return [
+        {
+            "url": f"https://github.com/octocat/Hello-World/issues/{i}",
+            "title": f"Issue {i} about {q}",
+            "score": round(random.uniform(0.7, 1.0), 2),
+        }
+        for i in range(1, n + 1)
+    ]
 
 
 def main():
@@ -20,19 +31,6 @@ def main():
     parser.add_argument("--parallel", action="store_true")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
-
-    # Inlined logic from doppiozero.github_conversations_research_agent
-    import random
-
-    def semantic_search(q: str, n: int):
-        return [
-            {
-                "url": f"https://github.com/octocat/Hello-World/issues/{i}",
-                "title": f"Issue {i} about {q}",
-                "score": round(random.uniform(0.7, 1.0), 2),
-            }
-            for i in range(1, n + 1)
-        ]
 
     clarifying_questions = [
         f"What aspect of '{args.request}' is most important?",

@@ -2,6 +2,50 @@
 """CLI wrapper for extracting topics from a GitHub conversation."""
 import argparse
 import sys
+import os
+import json
+from typing import List, Optional
+
+
+def extract_topics(
+    conversation_url: str,
+    topics_prompt_path: str,
+    cache_path: Optional[str] = None,
+    max_topics: Optional[int] = None,
+) -> List[str]:
+    conversation_text = f"Conversation from {conversation_url}..."
+    try:
+        with open(topics_prompt_path, "r", encoding="utf-8") as f:
+            prompt = f.read()
+    except Exception as e:
+        print(f"Error reading prompt file: {e}")
+        return []
+
+    base_topics = [
+        "performance",
+        "authentication",
+        "database",
+        "caching",
+        "bug-fix",
+        "security",
+        "documentation",
+    ]
+    if max_topics is not None:
+        topics = base_topics[:max_topics]
+    else:
+        topics = base_topics
+
+    if cache_path:
+        os.makedirs(cache_path, exist_ok=True)
+        safe_url = conversation_url.replace("/", "_").replace(":", "_")
+        cache_file = os.path.join(cache_path, f"topics_{safe_url}.json")
+        try:
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump(topics, f)
+        except Exception as e:
+            print(f"Error writing cache file: {e}")
+
+    return topics
 
 
 def main():
@@ -16,51 +60,6 @@ def main():
         "--max-topics", type=int, default=None, help="Maximum number of topics to return"
     )
     args = parser.parse_args()
-
-    # Inlined logic from doppiozero.extract_topics
-    import os
-    import json
-    from typing import List, Optional
-
-    def extract_topics(
-        conversation_url: str,
-        topics_prompt_path: str,
-        cache_path: Optional[str] = None,
-        max_topics: Optional[int] = None,
-    ) -> List[str]:
-        conversation_text = f"Conversation from {conversation_url}..."
-        try:
-            with open(topics_prompt_path, "r", encoding="utf-8") as f:
-                prompt = f.read()
-        except Exception as e:
-            print(f"Error reading prompt file: {e}")
-            return []
-
-        base_topics = [
-            "performance",
-            "authentication",
-            "database",
-            "caching",
-            "bug-fix",
-            "security",
-            "documentation",
-        ]
-        if max_topics is not None:
-            topics = base_topics[:max_topics]
-        else:
-            topics = base_topics
-
-        if cache_path:
-            os.makedirs(cache_path, exist_ok=True)
-            safe_url = conversation_url.replace("/", "_").replace(":", "_")
-            cache_file = os.path.join(cache_path, f"topics_{safe_url}.json")
-            try:
-                with open(cache_file, "w", encoding="utf-8") as f:
-                    json.dump(topics, f)
-            except Exception as e:
-                print(f"Error writing cache file: {e}")
-
-        return topics
 
     try:
         topics = extract_topics(

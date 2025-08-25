@@ -5,7 +5,9 @@ This wrapper delegates to the library function in `doppiozero.fetch_github_conve
 """
 import argparse
 import sys
+import json
 from pathlib import Path
+from doppiozero.fetch_github_conversation import fetch_github_conversation
 
 
 def main():
@@ -17,15 +19,10 @@ def main():
     )
     args = parser.parse_args()
 
-    # Import inside main to keep CLI tiny and avoid heavy imports at module import time
-    from doppiozero.fetch_github_conversation import fetch_github_conversation
-
     try:
         data = fetch_github_conversation(
             args.input, cache_path=args.cache_path, updated_at=args.updated_at
         )
-        import json
-
         json.dump(data, sys.stdout, indent=2)
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

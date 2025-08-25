@@ -1,7 +1,25 @@
 #!/usr/bin/env python3
 """CLI wrapper to fetch multiple GitHub conversations (reads URLs from file or stdin)."""
 import argparse
-import sys
+import json
+from doppiozero.utils.scripts_common import read_urls_from_stdin_or_file
+
+
+def fetch_github_conversations(urls, cache_path=None, updated_at=None):
+    results = []
+    from urllib.error import URLError
+
+    for url in urls:
+        try:
+            # Delegate to the package fetch function (PyGithub adapter in fetch module)
+            from doppiozero.fetch_github_conversation import fetch_github_conversation
+
+            convo = fetch_github_conversation(url, cache_path=cache_path, updated_at=updated_at)
+            if convo:
+                results.append(convo)
+        except Exception as e:
+            print(f"Error fetching conversation for {url}: {e}")
+    return results
 
 
 def main():
@@ -14,26 +32,6 @@ def main():
     parser.add_argument("--cache-path", default=None)
     parser.add_argument("--updated-at", default=None)
     args = parser.parse_args()
-
-    # Inlined logic from doppiozero.fetch_github_conversations
-    from doppiozero.utils.scripts_common import read_urls_from_stdin_or_file
-    import json
-
-    def fetch_github_conversations(urls, cache_path=None, updated_at=None):
-        results = []
-        from urllib.error import URLError
-
-        for url in urls:
-            try:
-                # Delegate to the package fetch function (PyGithub adapter in fetch module)
-                from doppiozero.fetch_github_conversation import fetch_github_conversation
-
-                convo = fetch_github_conversation(url, cache_path=cache_path, updated_at=updated_at)
-                if convo:
-                    results.append(convo)
-            except Exception as e:
-                print(f"Error fetching conversation for {url}: {e}")
-        return results
 
     urls = read_urls_from_stdin_or_file(args.file)
     results = fetch_github_conversations(

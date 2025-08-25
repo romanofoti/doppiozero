@@ -1,7 +1,39 @@
 #!/usr/bin/env python3
 """CLI wrapper to bulk index multiple GitHub conversations (file or stdin)."""
 import argparse
-import sys
+from doppiozero.utils.scripts_common import read_urls_from_stdin_or_file
+
+
+def index_summaries(
+    urls,
+    executive_summary_prompt_path,
+    topics_prompt_path,
+    collection,
+    cache_path=None,
+    updated_at=None,
+    model=None,
+    qdrant_url=None,
+    max_topics=None,
+    skip_if_up_to_date=False,
+):
+    from doppiozero.index_summary import index_summary
+
+    for url in urls:
+        try:
+            index_summary(
+                conversation_url=url,
+                executive_summary_prompt_path=executive_summary_prompt_path,
+                topics_prompt_path=topics_prompt_path,
+                collection=collection,
+                cache_path=cache_path,
+                updated_at=updated_at,
+                model=model,
+                qdrant_url=qdrant_url,
+                max_topics=max_topics,
+                skip_if_up_to_date=skip_if_up_to_date,
+            )
+        except Exception as e:
+            print(f"Error indexing summary for {url}: {e}")
 
 
 def main():
@@ -21,39 +53,6 @@ def main():
     parser.add_argument("--max-topics", type=int, default=None)
     parser.add_argument("--skip-if-up-to-date", action="store_true")
     args = parser.parse_args()
-
-    from doppiozero.utils.scripts_common import read_urls_from_stdin_or_file
-
-    def index_summaries(
-        urls,
-        executive_summary_prompt_path,
-        topics_prompt_path,
-        collection,
-        cache_path=None,
-        updated_at=None,
-        model=None,
-        qdrant_url=None,
-        max_topics=None,
-        skip_if_up_to_date=False,
-    ):
-        from doppiozero.index_summary import index_summary
-
-        for url in urls:
-            try:
-                index_summary(
-                    conversation_url=url,
-                    executive_summary_prompt_path=executive_summary_prompt_path,
-                    topics_prompt_path=topics_prompt_path,
-                    collection=collection,
-                    cache_path=cache_path,
-                    updated_at=updated_at,
-                    model=model,
-                    qdrant_url=qdrant_url,
-                    max_topics=max_topics,
-                    skip_if_up_to_date=skip_if_up_to_date,
-                )
-            except Exception as e:
-                print(f"Error indexing summary for {url}: {e}")
 
     urls = read_urls_from_stdin_or_file(args.file)
     index_summaries(
