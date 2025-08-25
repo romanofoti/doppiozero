@@ -54,7 +54,7 @@ class GitHubClient:
         repository = self.gh.get_repo(f"{owner}/{repo}")
         issue = repository.get_issue(int(number))  # type: ignore
 
-        comments = [self._normalize_comment(c) for c in issue.get_comments()]
+        comment_ls = [self._normalize_comment(c) for c in issue.get_comments()]
 
         normalized = {
             "type": "issue",
@@ -76,7 +76,7 @@ class GitHubClient:
                 if getattr(issue, "updated_at", None)
                 else None
             ),
-            "comments": comments,
+            "comments": comment_ls,
         }
         return normalized
 
@@ -84,8 +84,8 @@ class GitHubClient:
         repository = self.gh.get_repo(f"{owner}/{repo}")
         pr = repository.get_pull(int(number))  # type: ignore
 
-        comments = [self._normalize_comment(c) for c in pr.get_issue_comments()]
-        reviews = [
+        comment_ls = [self._normalize_comment(c) for c in pr.get_issue_comments()]
+        review_ls = [
             {
                 "author": self._normalize_user(getattr(r, "user", None)),
                 "body": getattr(r, "body", None),
@@ -98,8 +98,8 @@ class GitHubClient:
             }
             for r in pr.get_reviews()
         ]
-        review_comments = [self._normalize_comment(c) for c in pr.get_review_comments()]
-        commits = [
+        review_comment_ls = [self._normalize_comment(c) for c in pr.get_review_comments()]
+        commit_ls = [
             {
                 "sha": getattr(c, "sha", None),
                 "message": (
@@ -139,10 +139,10 @@ class GitHubClient:
                 if getattr(pr, "updated_at", None)
                 else None
             ),
-            "comments": comments,
-            "reviews": reviews,
-            "review_comments": review_comments,
-            "commits": commits,
+            "comments": comment_ls,
+            "reviews": review_ls,
+            "review_comments": review_comment_ls,
+            "commits": commit_ls,
             "diff": diff,
         }
         return normalized
@@ -170,12 +170,12 @@ class GitHubClient:
 
     def search_issues(self, query: str, max_results: int = 50) -> List[Dict[str, Any]]:
         results = self.gh.search_issues(query)  # type: ignore
-        out: List[Dict[str, Any]] = []
+        out_ls: List[Dict[str, Any]] = []
         count = 0
         for it in results:
             if count >= max_results:
                 break
-            out.append(
+            out_ls.append(
                 {
                     "url": getattr(it, "html_url", None),
                     "updated_at": (
@@ -186,4 +186,4 @@ class GitHubClient:
                 }
             )
             count += 1
-        return out
+        return out_ls

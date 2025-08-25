@@ -40,7 +40,7 @@ def vector_upsert(
         vector_id = str(hash(text))
 
     # Step 3: Simulate upsert to Qdrant
-    vector_payload = {
+    vector_payload_dc = {
         "id": vector_id,
         "embedding": embedding,
         "metadata": metadata,
@@ -55,4 +55,4 @@ def vector_upsert(
         return
 
     # Step 5: Simulate storing vector (print or cache)
-    print(f"Upserted vector to collection '{collection}': {json.dumps(vector_payload)[:120]}...")
+    print(f"Upserted vector to collection '{collection}': {json.dumps(vector_payload_dc)[:120]}...")

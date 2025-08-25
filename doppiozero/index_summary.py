@@ -36,7 +36,7 @@ def index_summary(
         skip_if_up_to_date (bool): Skip indexing if vector exists and is up-to-date.
     """
     # Step 1: Simulate fetching conversation data
-    conversation_data = {
+    conversation_data_dc = {
         "url": conversation_url,
         "title": "Sample Issue Title",
         "author": "octocat",
@@ -63,20 +63,20 @@ def index_summary(
         topics_prompt = ""
     base_topics = ["performance", "authentication", "database", "caching", "bug-fix"]
     if max_topics is not None:
-        topics = base_topics[:max_topics]
+        topics_ls = base_topics[:max_topics]
     else:
-        topics = base_topics
+        topics_ls = base_topics
 
     # Step 4: Simulate upsert to vector DB (Qdrant)
-    vector_payload = {
+    vector_payload_dc = {
         "url": conversation_url,
-        "title": conversation_data["title"],
-        "author": conversation_data["author"],
-        "state": conversation_data["state"],
-        "created_at": conversation_data["created_at"],
-        "updated_at": conversation_data["updated_at"],
+        "title": conversation_data_dc["title"],
+        "author": conversation_data_dc["author"],
+        "state": conversation_data_dc["state"],
+        "created_at": conversation_data_dc["created_at"],
+        "updated_at": conversation_data_dc["updated_at"],
         "executive_summary": executive_summary,
-        "topics": topics,
+        "topics": topics_ls,
         "collection": collection,
         "model": model,
         "qdrant_url": qdrant_url,
@@ -88,10 +88,10 @@ def index_summary(
         cache_file = os.path.join(cache_path, f"index_summary_{safe_url}.json")
         try:
             with open(cache_file, "w", encoding="utf-8") as f:
-                json.dump(vector_payload, f)
+                json.dump(vector_payload_dc, f)
         except Exception as e:
             print(f"Error writing cache file: {e}")
 
     print(
-        f"Indexed summary for {conversation_url} in collection '{collection}' with topics: {topics}"
+        f"Indexed summary for {conversation_url} in collection '{collection}' with topics: {topics_ls}"
     )
