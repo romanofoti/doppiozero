@@ -17,11 +17,7 @@ import json
 import datetime
 
 # Use the PyGithub-based adapter
-from .github_client import (
-    fetch_issue as gh_fetch_issue,
-    fetch_pr as gh_fetch_pr,
-    fetch_discussion as gh_fetch_discussion,
-)
+from .github_client import GitHubClient
 
 
 def parse_input(input_str: str) -> Tuple[str, str, str, str]:
@@ -76,16 +72,19 @@ def get_updated_at(data: Dict[str, Any], type_: str) -> Optional[str]:
 
 
 def fetch_issue(owner: str, repo: str, number: str, token: Optional[str]) -> Dict[str, Any]:
-    return gh_fetch_issue(owner, repo, number, token)
+    client = GitHubClient(token)
+    return client.fetch_issue(owner, repo, number)
 
 
 def fetch_pr(owner: str, repo: str, number: str, token: Optional[str]) -> Dict[str, Any]:
-    return gh_fetch_pr(owner, repo, number, token)
+    client = GitHubClient(token)
+    return client.fetch_pr(owner, repo, number)
 
 
 def fetch_discussion(owner: str, repo: str, number: str, token: Optional[str]) -> Dict[str, Any]:
     try:
-        return gh_fetch_discussion(owner, repo, number, token)
+        client = GitHubClient(token)
+        return client.fetch_discussion(owner, repo, number)
     except Exception:
         return {"url": f"https://github.com/{owner}/{repo}/discussions/{number}", "number": number}
 
