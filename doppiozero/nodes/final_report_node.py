@@ -98,14 +98,14 @@ class FinalReportNode(Node):
             shared["claim_verification_completed"] = True
             return "verify"
         self.logger.info("=== FINAL REPORT ===\n\n")
-        print(exec_res)
+        self.logger.info(exec_res)
         if shared.get("unsupported_claims"):
-            print("\n\n---\n\n")
-            print(
+            self.logger.info("\n\n---\n\n")
+            self.logger.info(
                 f"**Note**: The following {len(shared['unsupported_claims'])} claims could not be fully verified against the available evidence:"
             )
             for i, claim in enumerate(shared["unsupported_claims"]):
-                print(f"{i + 1}. {claim}")
+                self.logger.info(f"{i + 1}. {claim}")
         compaction_note = ""
         if shared.get("compaction_attempts", 0) > 0:
             compaction_note = (

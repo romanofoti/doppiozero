@@ -6,9 +6,12 @@ Module for generating an executive summary of a GitHub conversation using an LLM
 from typing import Optional
 import os
 import json
+import logging
 
 from .fetch_github_conversation import fetch_github_conversation
 from .llm_client import generate
+
+logger = logging.getLogger(__name__)
 
 
 def summarize_github_conversation(
@@ -34,7 +37,7 @@ def summarize_github_conversation(
         with open(executive_summary_prompt_path, "r", encoding="utf-8") as f:
             prompt = f.read()
     except Exception as e:
-        print(f"Error reading executive summary prompt: {e}")
+        logger.error(f"Error reading executive summary prompt: {e}")
         return ""
 
     # Step 2: Fetch conversation and construct LLM prompt
@@ -50,7 +53,7 @@ def summarize_github_conversation(
     try:
         summary = generate(full_prompt)
     except Exception as e:
-        print(f"LLM summarization failed: {e}")
+        logger.error(f"LLM summarization failed: {e}")
         # Fallback stub
         summary = f"Executive summary for {conversation_url}: {prompt[:120]}..."
 
@@ -63,6 +66,6 @@ def summarize_github_conversation(
             with open(cache_file, "w", encoding="utf-8") as f:
                 json.dump({"summary": summary}, f)
         except Exception as e:
-            print(f"Error writing cache file: {e}")
+            logger.error(f"Error writing cache file: {e}")
 
     return summary

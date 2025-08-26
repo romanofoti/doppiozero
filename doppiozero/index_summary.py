@@ -6,6 +6,9 @@ Module for indexing a GitHub conversation summary in a vector database for seman
 from typing import Optional, Dict, Any
 import json
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def index_summary(
@@ -50,7 +53,7 @@ def index_summary(
         with open(executive_summary_prompt_path, "r", encoding="utf-8") as f:
             exec_prompt = f.read()
     except Exception as e:
-        print(f"Error reading executive summary prompt: {e}")
+        logger.error(f"Error reading executive summary prompt: {e}")
         exec_prompt = ""
     executive_summary = f"Executive summary for {conversation_url}: {exec_prompt[:60]}..."
 
@@ -59,7 +62,7 @@ def index_summary(
         with open(topics_prompt_path, "r", encoding="utf-8") as f:
             topics_prompt = f.read()
     except Exception as e:
-        print(f"Error reading topics prompt: {e}")
+        logger.error(f"Error reading topics prompt: {e}")
         topics_prompt = ""
     base_topic_ls = ["performance", "authentication", "database", "caching", "bug-fix"]
     if max_topics is not None:
@@ -90,8 +93,8 @@ def index_summary(
             with open(cache_file, "w", encoding="utf-8") as f:
                 json.dump(vector_payload_dc, f)
         except Exception as e:
-            print(f"Error writing cache file: {e}")
+            logger.error(f"Error writing cache file: {e}")
 
-    print(
+    logger.info(
         f"Indexed summary for {conversation_url} in collection '{collection}' with topics: {topic_ls}"
     )

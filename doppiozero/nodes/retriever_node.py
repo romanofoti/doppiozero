@@ -11,17 +11,16 @@ class RetrieverNode(Node):
 
     def exec(self, search_plans):
         logger.info("Executing search operations and retrieving data...")
-
-    result_ls = [
-        {
-            "url": "https://github.com/example/conversation/2",
-            "summary": "Retrieved summary",
-            "score": 0.90,
-            "search_mode": "semantic",
-            "conversation": {},
-        }
-    ]
-    return result_ls
+        result_ls = [
+            {
+                "url": "https://github.com/example/conversation/2",
+                "summary": "Retrieved summary",
+                "score": 0.90,
+                "search_mode": "semantic",
+                "conversation": {},
+            }
+        ]
+        return result_ls
 
     def post(self, shared, prep_res, exec_res):
         shared["memory"]["hits"].extend(exec_res)

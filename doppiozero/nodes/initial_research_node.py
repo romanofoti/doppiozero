@@ -14,16 +14,15 @@ class InitialResearchNode(Node):
 
     def exec(self, plan):
         logger.info("Executing initial semantic search and enriching results...")
-
-    result_ls = [
-        {
-            "url": "https://github.com/example/conversation/1",
-            "summary": "Example summary",
-            "score": 0.95,
-            "conversation": {},
-        }
-    ]
-    return result_ls
+        result_ls = [
+            {
+                "url": "https://github.com/example/conversation/1",
+                "summary": "Example summary",
+                "score": 0.95,
+                "conversation": {},
+            }
+        ]
+        return result_ls
 
     def post(self, shared, prep_res, exec_res):
         shared["memory"] = {"hits": exec_res, "notes": [], "search_queries": [shared["request"]]}

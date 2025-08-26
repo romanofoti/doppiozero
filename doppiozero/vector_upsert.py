@@ -5,8 +5,11 @@ Module for embedding text and upserting vectors with metadata into Qdrant collec
 
 from typing import Dict, Any, Optional
 import json
+import logging
 
 from .llm_client import embed
+
+logger = logging.getLogger(__name__)
 
 
 def vector_upsert(
@@ -51,8 +54,10 @@ def vector_upsert(
 
     # Step 4: Optionally skip if up-to-date
     if skip_if_up_to_date and skip_if_up_to_date in metadata:
-        print(f"Skipping upsert for {vector_id} (up-to-date by {skip_if_up_to_date})")
+        logger.info(f"Skipping upsert for {vector_id} (up-to-date by {skip_if_up_to_date})")
         return
 
     # Step 5: Simulate storing vector (print or cache)
-    print(f"Upserted vector to collection '{collection}': {json.dumps(vector_payload_dc)[:120]}...")
+    logger.info(
+        f"Upserted vector to collection '{collection}': {json.dumps(vector_payload_dc)[:120]}..."
+    )

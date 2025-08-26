@@ -7,15 +7,13 @@ logger = get_logger(__name__)
 class ClaimVerifierNode(Node):
     def prep(self, shared):
         logger.info("=== CLAIM VERIFICATION PHASE ===")
-
-    claim_ls = ["Claim 1", "Claim 2"]
-    return claim_ls
+        claim_ls = ["Claim 1", "Claim 2"]
+        return claim_ls
 
     def exec(self, claims):
         logger.info("Verifying claims against evidence...")
-
-    result_ls = [{"claim": claim, "supported": True} for claim in claims]
-    return result_ls
+        result_ls = [{"claim": claim, "supported": True} for claim in claims]
+        return result_ls
 
     def post(self, shared, prep_res, exec_res):
         shared["claim_verification"] = {
