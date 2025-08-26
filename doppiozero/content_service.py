@@ -1,10 +1,10 @@
 """content_service.py
 
 Provides two classes:
- - Fetcher: fetches GitHub conversations (issues/prs/discussions) and handles caching.
- - Manager: higher-level orchestration that searches and summarizes conversations using a Fetcher and an LLM client.
+ - ContentFetcher: fetches GitHub conversations (issues/prs/discussions) and handles caching.
+ - ContentManager: higher-level orchestration that searches and summarizes conversations using a ContentFetcher and an LLM client.
 
-The module exposes singletons `fetcher` and `manager` for convenience.
+The module exposes singletons `content_fetcher` and `content_manager` for convenience.
 """
 
 from typing import Optional, Dict, Any, Tuple, List
