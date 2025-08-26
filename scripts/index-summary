@@ -2,7 +2,7 @@
 """CLI wrapper for index-summary: orchestrate indexing of a single GitHub conversation."""
 import argparse
 import sys
-from doppiozero.index_summary import index_summary
+from doppiozero.content_service import content_manager
 
 
 def main():
@@ -20,7 +20,7 @@ def main():
     args = parser.parse_args()
 
     try:
-        index_summary(
+        content_manager.index_summary(
             conversation_url=args.input,
             executive_summary_prompt_path=args.executive_summary_prompt_path,
             topics_prompt_path=args.topics_prompt_path,

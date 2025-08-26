@@ -6,6 +6,7 @@ Shared utility functions for agentic workflows.
 import os
 import json
 import logging
+from typing import Optional
 
 # **********************************
 # Constants and parameters
@@ -91,3 +92,35 @@ def write_json_safe(path, data, indent: int = 2):
 
 def ensure_dir(path):
     os.makedirs(path, exist_ok=True)
+
+
+# -------------------------------
+# Script/CLI helpers (migrated from scripts_common)
+# -------------------------------
+def read_urls_from_stdin_or_file(path: Optional[str]):
+    """Return a list of URLs from a file path or stdin (if path is None)."""
+    import sys
+
+    if path:
+        with open(path, "r", encoding="utf-8") as f:
+            return [l.strip() for l in f.readlines() if l.strip()]
+    else:
+        data = sys.stdin.read()
+        return [l.strip() for l in data.splitlines() if l.strip()]
+
+
+def safe_filename_for_url(url: str) -> str:
+    """Generate a filesystem-safe filename fragment for a url."""
+    return url.replace("https://", "").replace("http://", "").replace("/", "_").replace(":", "_")
+
+
+def load_json_if_exists(path: Optional[str]):
+    if not path:
+        return None
+    if not os.path.exists(path):
+        return None
+    return read_json_or_none(path)
+
+
+def save_json(path: str, obj) -> None:
+    write_json_safe(path, obj)

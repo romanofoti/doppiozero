@@ -2,7 +2,7 @@
 """CLI wrapper to fetch multiple GitHub conversations (reads URLs from file or stdin)."""
 import argparse
 import json
-from doppiozero.utils.scripts_common import read_urls_from_stdin_or_file
+from doppiozero.utils.utils import read_urls_from_stdin_or_file
 
 
 def fetch_github_conversations(urls, cache_path=None, updated_at=None):

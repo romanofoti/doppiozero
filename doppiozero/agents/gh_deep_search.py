@@ -24,7 +24,6 @@ logger = get_logger(__name__)
 
 # Top-level pragmatic helper imports used by the convenience orchestration
 from ..content_service import content_manager, content_fetcher
-from ..vector_upsert import vector_upsert
 
 
 class GitHubAgent:
@@ -132,7 +131,6 @@ def run_deep_search(request: str, options: dict):
     (optional) upsert passes.
     """
     from ..content_service import content_manager, content_fetcher
-    from ..vector_upsert import vector_upsert
 
     collection = options.get("collection")
     limit = options.get("limit", 5)
@@ -171,7 +169,7 @@ def run_deep_search(request: str, options: dict):
             # Optionally upsert to vector DB
             try:
                 if collection:
-                    vector_upsert(
+                    content_manager.vector_upsert(
                         summary or url, collection, {"url": url}, model=models.get("embed")
                     )
             except Exception as e:

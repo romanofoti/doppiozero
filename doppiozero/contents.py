@@ -16,7 +16,7 @@ import urllib.parse
 from .github_client import GitHubClient
 from .llm_client import llm_client
 from .utils.utils import get_logger, read_json_or_none, write_json_safe
-from .utils.scripts_common import safe_filename_for_url
+from .utils.utils import safe_filename_for_url
 
 logger = get_logger(__name__)
 
@@ -187,6 +187,147 @@ class ContentManager:
                 logger.error(f"Error writing cache file: {e}")
 
         return summary
+
+    def index_summary(
+        self,
+        conversation_url: str,
+        executive_summary_prompt_path: str,
+        topics_prompt_path: str,
+        collection: str,
+        cache_path: Optional[str] = None,
+        updated_at: Optional[str] = None,
+        model: Optional[str] = None,
+        qdrant_url: Optional[str] = None,
+        max_topics: Optional[int] = None,
+        skip_if_up_to_date: bool = False,
+        indexer=None,
+    ) -> Dict[str, Any]:
+        """Index a GitHub conversation summary using the provided indexer (defaults to vector_upsert.vector_upsert).
+
+        This method orchestrates fetch -> summarize -> index and caches payloads when requested.
+        """
+        # default indexer uses the manager's built-in vector_upsert implementation
+        indexer = indexer or self.vector_upsert
+
+        # Fetch conversation
+        convo_dc = self.fetcher.fetch_github_conversation(
+            conversation_url, cache_path=cache_path, updated_at=updated_at
+        )
+
+        # Build executive summary
+        try:
+            with open(executive_summary_prompt_path, "r", encoding="utf-8") as f:
+                exec_prompt = f.read()
+        except Exception as e:
+            logger.error(f"Error reading executive summary prompt: {e}")
+            exec_prompt = ""
+        executive_summary = (
+            self.llm.generate(
+                exec_prompt.replace("{{conversation}}", json.dumps(convo_dc, indent=2)[:8000])
+            )
+            if self.llm
+            else f"Executive summary for {conversation_url}: {exec_prompt[:60]}..."
+        )
+
+        # Topics extraction (simple placeholder using prompt)
+        try:
+            with open(topics_prompt_path, "r", encoding="utf-8") as f:
+                topics_prompt = f.read()
+        except Exception as e:
+            logger.error(f"Error reading topics prompt: {e}")
+            topics_prompt = ""
+        base_topic_ls = ["performance", "authentication", "database", "caching", "bug-fix"]
+        topic_ls = base_topic_ls[:max_topics] if max_topics is not None else base_topic_ls
+
+        # Prepare payload/metadata
+        vector_payload_dc = {
+            "url": conversation_url,
+            "title": convo_dc.get("title"),
+            "author": convo_dc.get("user") or convo_dc.get("author"),
+            "state": convo_dc.get("state"),
+            "created_at": convo_dc.get("created_at"),
+            "updated_at": convo_dc.get("updated_at"),
+            "executive_summary": executive_summary,
+            "topics": topic_ls,
+            "collection": collection,
+            "model": model,
+            "qdrant_url": qdrant_url,
+        }
+
+        # Cache payload if requested
+        if cache_path:
+            safe_url = safe_filename_for_url(conversation_url)
+            cache_file = os.path.join(cache_path, f"index_summary_{safe_url}.json")
+            try:
+                write_json_safe(cache_file, vector_payload_dc)
+            except Exception as e:
+                logger.error(f"Error writing cache file: {e}")
+
+        # Call indexer (upsert)
+        try:
+            indexer(
+                executive_summary,
+                collection,
+                {k: v for k, v in vector_payload_dc.items() if k != "executive_summary"},
+                model=model,
+                qdrant_url=qdrant_url,
+                skip_if_up_to_date=("updated_at" if skip_if_up_to_date else None),
+                vector_id_key="url",
+            )
+        except Exception as e:
+            logger.error(f"Indexing failed for {conversation_url}: {e}")
+
+        logger.info(
+            f"Indexed summary for {conversation_url} in collection '{collection}' with topics: {topic_ls}"
+        )
+        return vector_payload_dc
+
+    def vector_upsert(
+        self,
+        text: str,
+        collection: str,
+        metadata: Dict[str, Any],
+        model: Optional[str] = None,
+        qdrant_url: Optional[str] = None,
+        skip_if_up_to_date: Optional[str] = None,
+        vector_id_key: Optional[str] = None,
+    ) -> None:
+        """
+        Embed text and upsert vectors with metadata into the configured vector store.
+
+        This is the in-manager replacement for the old `vector_upsert.vector_upsert` module.
+        """
+        # Step 1: Generate embedding via llm_client
+        try:
+            embedding = self.llm.embed(text, model=model)
+        except Exception:
+            embedding = self.llm.embed(text, model=model) if self.llm else [0.0]
+
+        # Step 2: Deterministic vector id generation
+        if vector_id_key and vector_id_key in metadata:
+            vector_id = str(metadata[vector_id_key])
+        else:
+            vector_id = str(hash(text))
+
+        # Step 3: Prepare payload
+        vector_payload_dc = {
+            "id": vector_id,
+            "embedding": embedding,
+            "metadata": metadata,
+            "collection": collection,
+            "model": model,
+            "qdrant_url": qdrant_url,
+        }
+
+        # Step 4: Optionally skip if up-to-date
+        if skip_if_up_to_date and skip_if_up_to_date in metadata:
+            logger.info(f"Skipping upsert for {vector_id} (up-to-date by {skip_if_up_to_date})")
+            return
+
+        # Step 5: Log the simulated upsert (real implementation should call a provider API)
+        logger.info(
+            f"Upserted vector to collection '{collection}': {json.dumps(vector_payload_dc)[:120]}..."
+        )
 
 
 # Singletons

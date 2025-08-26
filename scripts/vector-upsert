@@ -3,7 +3,7 @@
 import argparse
 import sys
 import json
-from doppiozero.vector_upsert import vector_upsert
+from doppiozero.content_service import content_manager
 
 
 def main():
@@ -28,14 +28,12 @@ def main():
 
     metadata = json.loads(args.metadata)
     try:
-        vector_upsert(
-            text_content=text,
-            metadata=metadata,
-            collection=args.collection,
-            vector_id_key=args.vector_id_key,
+        content_manager.vector_upsert(
+            text,
+            args.collection,
+            metadata,
             model=args.model,
             qdrant_url=args.qdrant_url,
-            skip_if_up_to_date=args.skip_if_up_to_date,
         )
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

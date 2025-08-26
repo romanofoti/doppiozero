@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """CLI wrapper to bulk index multiple GitHub conversations (file or stdin)."""
 import argparse
-from doppiozero.utils.scripts_common import read_urls_from_stdin_or_file
+from doppiozero.utils.utils import read_urls_from_stdin_or_file
 
 
 def index_summaries(
@@ -16,11 +16,11 @@ def index_summaries(
     max_topics=None,
     skip_if_up_to_date=False,
 ):
-    from doppiozero.index_summary import index_summary
+    from doppiozero.content_service import content_manager
 
     for url in urls:
         try:
-            index_summary(
+            content_manager.index_summary(
                 conversation_url=url,
                 executive_summary_prompt_path=executive_summary_prompt_path,
                 topics_prompt_path=topics_prompt_path,
