@@ -9,7 +9,7 @@ import json
 import logging
 
 from .fetch_github_conversation import fetch_github_conversation
-from .llm_client import generate
+from .llm_client import default_llm_client as llm_client
 from .utils.utils import get_logger
 
 logger = get_logger(__name__)
@@ -52,7 +52,7 @@ def summarize_github_conversation(
 
     # Step 3: Call LLM
     try:
-        summary = generate(full_prompt)
+        summary = llm_client.generate(full_prompt)
     except Exception as e:
         logger.error(f"LLM summarization failed: {e}")
         # Fallback stub

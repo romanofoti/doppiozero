@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional
 import json
 import logging
 
-from .llm_client import embed
+from .llm_client import default_llm_client as llm_client
 from .utils.utils import get_logger
 
 logger = get_logger(__name__)
@@ -35,7 +35,7 @@ def vector_upsert(
         vector_id_key (Optional[str]): Metadata field for ID generation.
     """
     # Step 1: Generate embedding via llm_client (fallback deterministic inside)
-    embedding = embed(text, model=model)
+    embedding = llm_client.embed(text, model=model)
 
     # Step 2: Simulate vector ID generation
     if vector_id_key and vector_id_key in metadata:
