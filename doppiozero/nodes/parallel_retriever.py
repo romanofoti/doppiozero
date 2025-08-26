@@ -1,6 +1,6 @@
 from ..pocketflow.pocketflow import Node
 from ..utils.utils import get_logger
-from .retriever_node import RetrieverNode
+from .retriever import RetrieverNode
 
 
 logger = get_logger(__name__)

@@ -4,7 +4,7 @@ from ..utils.utils import get_logger
 logger = get_logger(__name__)
 
 
-class AskClarifyingNode(Node):
+class ClarifierNode(Node):
     def prep(self, shared):
         logger.info("=== CLARIFYING QUESTIONS PHASE ===")
         return ["What is the main goal?", "Are there specific repos to focus on?"]

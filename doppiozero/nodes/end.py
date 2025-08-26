@@ -4,7 +4,7 @@ from ..utils.utils import get_logger
 logger = get_logger(__name__)
 
 
-class EndNode(Node):
+class End(Node):
     def prep(self, shared):
         # Keep a reference to shared so exec can return results. Base Flow
         # passes prep(shared) -> exec(prep_res) where prep_res is often None,

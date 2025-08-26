@@ -16,7 +16,7 @@ def index_summaries(
     max_topics=None,
     skip_if_up_to_date=False,
 ):
-    from doppiozero.content_service import content_manager
+    from doppiozero.contents import content_manager
 
     for url in urls:
         try:

@@ -4,7 +4,7 @@ from ..utils.utils import get_logger
 logger = get_logger(__name__)
 
 
-class ContextCompactionNode(Node):
+class ContextCompacterNode(Node):
     def prep(self, shared):
         logger.info("=== CONTEXT COMPACTION PHASE ===")
         return shared.get("memory", {})

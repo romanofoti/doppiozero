@@ -3,7 +3,7 @@
 import argparse
 import sys
 import json
-from doppiozero.content_service import content_manager
+from doppiozero.contents import content_manager
 
 
 def main():

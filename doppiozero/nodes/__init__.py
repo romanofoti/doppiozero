@@ -4,26 +4,26 @@ Expose the node classes so other modules (agents) can import them from
 ``doppiozero.nodes`` without relying on delayed imports.
 """
 
-from .initial_research_node import InitialResearchNode
-from .ask_clarifying_node import AskClarifyingNode
-from .planner_node import PlannerNode
-from .retriever_node import RetrieverNode
-from .parallel_retriever_node import ParallelRetrieverNode
-from .context_compaction_node import ContextCompactionNode
-from .claim_verifier_node import ClaimVerifierNode
-from .parallel_claim_verifier_node import ParallelClaimVerifierNode
-from .final_report_node import FinalReportNode
-from .end_node import EndNode
+from .researcher import InitialResearchNode
+from .clarifier import ClarifierNode
+from .planner import PlannerNode
+from .retriever import RetrieverNode
+from .parallel_retriever import ParallelRetrieverNode
+from .context_compacter import ContextCompacterNode
+from .claim_verifier import VerifierNode
+from .parallel_verifier import ParallelClaimVerifierNode
+from .reporter import FinalReportNode
+from .end import End
 
 __all__ = [
     "InitialResearchNode",
-    "AskClarifyingNode",
+    "ClarifierNode",
     "PlannerNode",
     "RetrieverNode",
     "ParallelRetrieverNode",
-    "ContextCompactionNode",
-    "ClaimVerifierNode",
+    "ContextCompacterNode",
+    "VerifierNode",
     "ParallelClaimVerifierNode",
     "FinalReportNode",
-    "EndNode",
+    "End",
 ]

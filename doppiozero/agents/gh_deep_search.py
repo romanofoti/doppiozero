@@ -9,21 +9,21 @@ from ..utils.utils import get_logger
 # referencing module rather than delaying imports here.
 from ..nodes import (
     InitialResearchNode,
-    AskClarifyingNode,
+    ClarifierNode,
     PlannerNode,
     RetrieverNode,
     ParallelRetrieverNode,
-    ContextCompactionNode,
-    ClaimVerifierNode,
+    ContextCompacterNode,
+    VerifierNode,
     ParallelClaimVerifierNode,
     FinalReportNode,
-    EndNode,
+    End,
 )
 
 logger = get_logger(__name__)
 
 # Top-level pragmatic helper imports used by the convenience orchestration
-from ..content_service import content_manager, content_fetcher
+from ..contents import content_manager, content_fetcher
 
 
 class GitHubAgent:
@@ -77,15 +77,15 @@ class GitHubAgent:
     def _build_flow(self):
         # Node classes were imported at module top-level
         initial_node = InitialResearchNode()
-        clarify_node = AskClarifyingNode()
+        clarify_node = ClarifierNode()
         planner_node = PlannerNode()
         retriever_node = ParallelRetrieverNode() if self.shared["parallel"] else RetrieverNode()
-        compaction_node = ContextCompactionNode()
+        compaction_node = ContextCompacterNode()
         claim_verifier_node = (
-            ParallelClaimVerifierNode() if self.shared["parallel"] else ClaimVerifierNode()
+            ParallelClaimVerifierNode() if self.shared["parallel"] else VerifierNode()
         )
         final_node = FinalReportNode()
-        end_node = EndNode()
+        end_node = End()
 
         # Link nodes
         initial_node.next(clarify_node)
@@ -130,7 +130,7 @@ def run_deep_search(request: str, options: dict):
     progressively improved. It performs iterative search -> fetch -> summarize ->
     (optional) upsert passes.
     """
-    from ..content_service import content_manager, content_fetcher
+    from ..contents import content_manager, content_fetcher
 
     collection = options.get("collection")
     limit = options.get("limit", 5)

@@ -2,7 +2,7 @@
 """CLI wrapper for summarizing a GitHub conversation using the package summarizer."""
 import argparse
 import sys
-from doppiozero.content_service import content_manager
+from doppiozero.contents import content_manager
 
 
 def main():

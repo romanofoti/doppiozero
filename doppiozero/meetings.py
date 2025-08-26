@@ -13,7 +13,7 @@ import os
 import datetime
 
 from .utils.utils import get_logger, read_json_or_none, write_json_safe, ensure_dir
-from .llm_client import llm_client
+from .clients.llm import llm_client
 
 logger = get_logger(__name__)
 

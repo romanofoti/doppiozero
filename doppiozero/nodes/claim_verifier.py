@@ -4,7 +4,7 @@ from ..utils.utils import get_logger
 logger = get_logger(__name__)
 
 
-class ClaimVerifierNode(Node):
+class VerifierNode(Node):
     def prep(self, shared):
         logger.info("=== CLAIM VERIFICATION PHASE ===")
         claim_ls = ["Claim 1", "Claim 2"]

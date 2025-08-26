@@ -13,8 +13,8 @@ import json
 import datetime
 import urllib.parse
 
-from .github_client import GitHubClient
-from .llm_client import llm_client
+from .clients.github import GitHubClient
+from .clients.llm import llm_client
 from .utils.utils import get_logger, read_json_or_none, write_json_safe
 from .utils.utils import safe_filename_for_url
 
