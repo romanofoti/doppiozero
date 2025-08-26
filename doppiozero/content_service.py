@@ -1,47 +1,35 @@
-"""
-fetch_github_conversation.py
+"""content_service.py
 
-Helpers for fetching GitHub issues, pull requests, and discussions.
+Provides two classes:
+ - Fetcher: fetches GitHub conversations (issues/prs/discussions) and handles caching.
+ - Manager: higher-level orchestration that searches and summarizes conversations using a Fetcher and an LLM client.
 
-Strategy:
-- Prefer the `gh` CLI when present for complex pagination and GraphQL convenience.
-- Fallback to GitHub REST API using an access token from the GITHUB_TOKEN
-  environment variable.
-- Provides caching helpers and updated_at checking to mirror the original
-  scripts behavior.
+The module exposes singletons `fetcher` and `manager` for convenience.
 """
 
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List
 import os
 import json
 import datetime
 import urllib.parse
 
-# Use the PyGithub-based adapter
 from .github_client import GitHubClient
-from .utils.utils import read_json_or_none, write_json_safe
+from .llm_client import llm_client
+from .utils.utils import get_logger, read_json_or_none, write_json_safe
+from .utils.scripts_common import safe_filename_for_url
+
+logger = get_logger(__name__)
 
 
-class ContentFetcher:
-    """Encapsulates fetching and caching of GitHub conversation content.
-
-    This class wraps the existing helper functions and exposes a single
-    `fetch_github_conversation` method. It accepts an optional token to
-    create a `GitHubClient` instance when fetching.
-    """
+class Fetcher:
+    """Fetch and cache GitHub conversation content."""
 
     def __init__(self, token: Optional[str] = None):
         self.token = token or os.environ.get("GITHUB_TOKEN")
 
     def parse_content_info(self, input_str: str) -> Tuple[str, str, str, str]:
-        """Accept either a URL or owner/repo/type/number and return components.
-
-        Returns (owner, repo, type, number)
-        """
         input_str = input_str.strip()
-        # URL form
         if input_str.startswith("http"):
-            # Expect URLs like https://github.com/owner/repo/issues/123
             parts = urllib.parse.urlparse(input_str)
             path = parts.path.lstrip("/")
             segs = path.split("/")
@@ -49,17 +37,14 @@ class ContentFetcher:
                 owner, repo, type_, number = segs[0], segs[1], segs[2], segs[3]
                 return owner, repo, type_, number
             raise ValueError(f"Unrecognized GitHub URL: {input_str}")
-        # owner/repo/type/number
         segs = input_str.split("/")
         if len(segs) == 4:
             return segs[0], segs[1], segs[2], segs[3]
         raise ValueError(f"Unrecognized input: {input_str}")
 
-    # --- Cache helpers (private) ---
     def _cache_path_for(
         self, cache_root: str, owner: str, repo: str, type_: str, number: str
     ) -> str:
-        # conversations/<owner>/<repo>/<type>/<number>.json
         return os.path.join(cache_root, "conversations", owner, repo, type_, f"{number}.json")
 
     def _load_cache(self, path: str) -> Optional[Dict[str, Any]]:
@@ -69,10 +54,8 @@ class ContentFetcher:
         write_json_safe(path, data)
 
     def _get_updated_at(self, data: Dict[str, Any], type_: str) -> Optional[str]:
-        # Attempt to return an ISO8601 updated_at from the fetched data
         if not data:
             return None
-        # After normalization, prefer 'updated_at'
         if isinstance(data, dict):
             return data.get("updated_at") or data.get("updatedAt")
         return None
@@ -120,7 +103,7 @@ class ContentFetcher:
                 except Exception:
                     pass
 
-        # Fetch based on type
+        # Fetch
         if type_ in ("issue", "issues"):
             data = self.fetch_issue(owner, repo, number)
         elif type_ in ("pull", "pulls", "pr", "prs"):
@@ -129,7 +112,8 @@ class ContentFetcher:
             data = self.fetch_discussion(owner, repo, number)
         else:
             raise ValueError(f"Unknown conversation type: {type_}")
-        # Try updated_at filter
+
+        # Updated at filter
         fetched_updated = self._get_updated_at(data if isinstance(data, dict) else {}, type_)
         if updated_at and fetched_updated:
             try:
@@ -151,5 +135,58 @@ class ContentFetcher:
         return data
 
 
-# Module-level default instance for convenience
-content_fetcher = ContentFetcher()
+class Manager:
+    """High-level manager that searches and summarizes GitHub conversations."""
+
+    def __init__(self, token: Optional[str] = None, llm=None, fetcher: Optional[Fetcher] = None):
+        self.token = token or os.environ.get("GITHUB_TOKEN")
+        self.llm = llm or llm_client
+        self.fetcher = fetcher or Fetcher()
+
+    def search(self, query: str, max_results: int = 50):
+        client = GitHubClient(self.token)
+        results = client.search_issues(query, max_results=max_results)
+        return results[:max_results]
+
+    def summarize(
+        self,
+        conversation_url: str,
+        executive_summary_prompt_path: str,
+        cache_path: Optional[str] = None,
+        updated_at: Optional[str] = None,
+    ) -> str:
+        try:
+            with open(executive_summary_prompt_path, "r", encoding="utf-8") as f:
+                prompt = f.read()
+        except Exception as e:
+            logger.error(f"Error reading executive summary prompt: {e}")
+            return ""
+
+        convo_dc = self.fetcher.fetch_github_conversation(
+            conversation_url, cache_path=cache_path, updated_at=updated_at
+        )
+        convo_text = json.dumps(convo_dc, indent=2)[:8000]
+        full_prompt = prompt.replace("{{conversation}}", convo_text).replace(
+            "{{url}}", conversation_url
+        )
+
+        try:
+            summary = self.llm.generate(full_prompt)
+        except Exception as e:
+            logger.error(f"LLM summarization failed: {e}")
+            summary = f"Executive summary for {conversation_url}: {prompt[:120]}..."
+
+        if cache_path:
+            safe_url = safe_filename_for_url(conversation_url)
+            cache_file = os.path.join(cache_path, f"summary_{safe_url}.json")
+            try:
+                write_json_safe(cache_file, {"summary": summary})
+            except Exception as e:
+                logger.error(f"Error writing cache file: {e}")
+
+        return summary
+
+
+# Singletons
+fetcher = Fetcher()
+manager = Manager(fetcher=fetcher)

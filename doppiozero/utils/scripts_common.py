@@ -10,6 +10,7 @@ from typing import List, Optional
 import os
 import json
 import sys
+from .utils import read_json_or_none, write_json_safe
 
 
 def read_urls_from_stdin_or_file(path: Optional[str]) -> List[str]:
@@ -36,14 +37,8 @@ def load_json_if_exists(path: Optional[str]):
         return None
     if not os.path.exists(path):
         return None
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return None
+    return read_json_or_none(path)
 
 
 def save_json(path: str, obj) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(obj, f, indent=2)
+    write_json_safe(path, obj)

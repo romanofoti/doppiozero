@@ -23,9 +23,7 @@ from ..nodes import (
 logger = get_logger(__name__)
 
 # Top-level pragmatic helper imports used by the convenience orchestration
-from ..search_github_conversations import search_github_conversations
-from ..content_fetcher import content_fetcher
-from ..summarize_github_conversation import summarize_github_conversation
+from ..content_service import manager, fetcher
 from ..vector_upsert import vector_upsert
 
 
@@ -133,9 +131,7 @@ def run_deep_search(request: str, options: dict):
     progressively improved. It performs iterative search -> fetch -> summarize ->
     (optional) upsert passes.
     """
-    from ..search_github_conversations import search_github_conversations
-    from ..content_fetcher import content_fetcher
-    from ..summarize_github_conversation import summarize_github_conversation
+    from ..content_service import manager, fetcher
     from ..vector_upsert import vector_upsert
 
     collection = options.get("collection")
@@ -150,17 +146,17 @@ def run_deep_search(request: str, options: dict):
     for depth in range(max_depth):
         q = f"{request} (pass {depth+1})"
         logger.info(f"Searching (pass {depth+1}): {q}")
-        result_ls = search_github_conversations(q, max_results=limit)
+        result_ls = manager.search(q, max_results=limit)
         for r in result_ls:
             url = r.get("url")
             if not url:
                 continue
             logger.info(f"Fetching conversation: {url}")
-            convo_dc = content_fetcher.fetch_github_conversation(url, cache_path=cache_path)
+            convo_dc = fetcher.fetch_github_conversation(url, cache_path=cache_path)
             summary = ""
             try:
                 if prompt_path:
-                    summary = summarize_github_conversation(url, prompt_path, cache_path=cache_path)
+                    summary = manager.summarize(url, prompt_path, cache_path=cache_path)
                 else:
                     summary = f"Summary for {url} (no prompt provided)"
             except Exception as e:

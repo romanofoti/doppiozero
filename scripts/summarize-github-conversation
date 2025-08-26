@@ -2,7 +2,7 @@
 """CLI wrapper for summarizing a GitHub conversation using the package summarizer."""
 import argparse
 import sys
-from doppiozero.summarize_github_conversation import summarize_github_conversation
+from doppiozero.content_service import manager
 
 
 def main():
@@ -20,9 +20,9 @@ def main():
     args = parser.parse_args()
 
     try:
-        summary = summarize_github_conversation(
+        summary = manager.summarize(
             args.input,
-            executive_summary_prompt_path=args.executive_summary_prompt_path,
+            args.executive_summary_prompt_path,
             cache_path=args.cache_path,
             updated_at=args.updated_at,
         )
