@@ -35,16 +35,6 @@ class GitHubAgent:
     """
 
     def __init__(self, request: str, options: dict):
-        """Initialize the agent with a request and options.
-
-        Args:
-            request : The user's natural-language research request.
-            options : A mapping of optional parameters (collection, models, etc.).
-
-        Returns:
-            None
-
-        """
         self.request = request
         self.options = options or {}
         self.logger = logger
@@ -85,12 +75,6 @@ class GitHubAgent:
         self._build_flow()
 
     def _build_flow(self):
-        """Construct the node Flow graph used by this agent.
-
-        Returns:
-            None
-
-        """
         # Node classes were imported at module top-level
         initial_node = InitialResearchNode()
         clarify_node = ClarifierNode()
@@ -121,12 +105,6 @@ class GitHubAgent:
         self.flow = Flow(initial_node)
 
     def run(self):
-        """Run the configured Flow and return the final result.
-
-        Returns:
-            The final flow result returned by the Flow orchestration.
-
-        """
         self.logger.info(
             f"=== GITHUB CONVERSATIONS RESEARCH AGENT{' (parallel mode)' if self.shared['parallel'] else ''} ==="
         )
@@ -140,16 +118,7 @@ class GitHubAgent:
 
 
 def start(request: str, options: dict):
-    """Compatibility wrapper: instantiate GitHubAgent and run the Flow.
-
-    Args:
-        request : The user's research request.
-        options : Optional configuration mapping.
-
-    Returns:
-        The final result of running the agent's Flow.
-
-    """
+    """Compatibility wrapper: instantiate GitHubAgent and run the Flow."""
     agent = GitHubAgent(request, options or {})
     return agent.run()
 
@@ -157,15 +126,9 @@ def start(request: str, options: dict):
 def run_deep_search(request: str, options: dict):
     """A pragmatic deep-search orchestration that uses existing helper modules.
 
-    This function provides a concrete implementation while the Node classes are progressively improved. It performs iterative search -> fetch -> summarize -> (optional) upsert passes.
-
-    Args:
-        request : The user's research request.
-        options : A mapping of runtime options (collection, limit, cache_path, etc.).
-
-    Returns:
-        A report dictionary containing the collected hits and a short summary.
-
+    This function provides a concrete implementation while the Node classes are
+    progressively improved. It performs iterative search -> fetch -> summarize ->
+    (optional) upsert passes.
     """
     from ..contents import content_manager, content_fetcher
 

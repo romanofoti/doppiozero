@@ -26,12 +26,9 @@ def get_logger(name=None, level=logging.INFO, format=FORMAT):
     """Return a logger of the specified name and level.
 
     Args:
-        name : the name of the logger. If no name is specified, root logger is returned.
-        level : logging level (e.g. logging.INFO, logging.WARNING, etc.).
+        name   : the name of the logger. If no name is specified, root logger is returned.
+        level  : logging levels (e.g. logging.INFO, logging.WARNING, etc.)
         format : format for the logger.
-
-    Returns:
-        A configured ``logging.Logger`` instance.
 
     Multiple calls to getLogger() with the same name return a reference to the same logger object.
 
@@ -61,30 +58,11 @@ def get_logger(name=None, level=logging.INFO, format=FORMAT):
 
 
 def read_json(path):
-    """Read JSON from a file and return the parsed object.
-
-    Args:
-        path : Path to the JSON file to read.
-
-    Returns:
-        The parsed Python object from the JSON file.
-
-    """
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def write_json(path, data):
-    """Write a Python object to a JSON file (pretty-printed).
-
-    Args:
-        path : Destination file path.
-        data : The Python object to serialize as JSON.
-
-    Returns:
-        None
-
-    """
     # Ensure parent directory exists
     parent = os.path.dirname(path)
     if parent:
@@ -94,15 +72,7 @@ def write_json(path, data):
 
 
 def read_json_or_none(path):
-    """Read JSON from path, return None if file doesn't exist or can't be read.
-
-    Args:
-        path : Path to the JSON file.
-
-    Returns:
-        The parsed JSON object, or None when the file is missing or unreadable.
-
-    """
+    """Read JSON from path, return None if file doesn't exist or can't be read."""
     if not os.path.exists(path):
         return None
     try:
@@ -112,17 +82,7 @@ def read_json_or_none(path):
 
 
 def write_json_safe(path, data, indent: int = 2):
-    """Write JSON to path, creating parent directories and pretty-printing by default.
-
-    Args:
-        path : Path to write the JSON file.
-        data : The object to serialize as JSON.
-        indent : Number of spaces to use for pretty-printing (default: 2).
-
-    Returns:
-        None
-
-    """
+    """Write JSON to path, creating parent directories and pretty-printing by default."""
     parent = os.path.dirname(path)
     if parent:
         os.makedirs(parent, exist_ok=True)
@@ -131,15 +91,6 @@ def write_json_safe(path, data, indent: int = 2):
 
 
 def ensure_dir(path):
-    """Ensure the given directory path exists, creating it if necessary.
-
-    Args:
-        path : Directory path to create.
-
-    Returns:
-        None
-
-    """
     os.makedirs(path, exist_ok=True)
 
 
@@ -147,15 +98,7 @@ def ensure_dir(path):
 # Script/CLI helpers (migrated from scripts_common)
 # -------------------------------
 def read_urls_from_stdin_or_file(path: Optional[str]):
-    """Return a list of URLs from a file path or stdin (if path is None).
-
-    Args:
-        path : Optional path to a file containing one URL per line. If None, URLs are read from stdin.
-
-    Returns:
-        A list of URL strings.
-
-    """
+    """Return a list of URLs from a file path or stdin (if path is None)."""
     import sys
 
     if path:
@@ -167,28 +110,11 @@ def read_urls_from_stdin_or_file(path: Optional[str]):
 
 
 def safe_filename_for_url(url: str) -> str:
-    """Generate a filesystem-safe filename fragment for a url.
-
-    Args:
-        url : The URL to convert into a safe filename fragment.
-
-    Returns:
-        A string suitable for use as a filename fragment.
-
-    """
+    """Generate a filesystem-safe filename fragment for a url."""
     return url.replace("https://", "").replace("http://", "").replace("/", "_").replace(":", "_")
 
 
 def load_json_if_exists(path: Optional[str]):
-    """Load JSON if the given path exists, otherwise return None.
-
-    Args:
-        path : Optional path to a JSON file.
-
-    Returns:
-        The parsed JSON object or None when path is None or file is missing.
-
-    """
     if not path:
         return None
     if not os.path.exists(path):
@@ -197,14 +123,4 @@ def load_json_if_exists(path: Optional[str]):
 
 
 def save_json(path: str, obj) -> None:
-    """Save an object to a JSON file via the safe writer.
-
-    Args:
-        path : Destination file path.
-        obj : Python object to serialize.
-
-    Returns:
-        None
-
-    """
     write_json_safe(path, obj)
