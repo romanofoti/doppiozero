@@ -27,9 +27,27 @@ class Meetings:
     """
 
     def __init__(self, llm=None):
+        """Initialize the Meetings helper with an optional LLM client.
+
+        Args:
+            llm : Optional LLM client instance. If omitted, a default client is used.
+
+        Returns:
+            None
+
+        """
         self.llm = llm or llm_client
 
     def find_transcript_files(self, transcripts_dir: str) -> List[str]:
+        """Return a list of transcript file paths from a directory.
+
+        Args:
+            transcripts_dir : Directory to search for transcript files.
+
+        Returns:
+            A list of filesystem paths to transcript files (txt or md).
+
+        """
         if not os.path.isdir(transcripts_dir):
             return []
         return [
@@ -39,10 +57,29 @@ class Meetings:
         ]
 
     def _read_file(self, path: str) -> str:
+        """Read and return the contents of a text file.
+
+        Args:
+            path : Path to the file to read.
+
+        Returns:
+            The file contents as a string.
+
+        """
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
 
     def _write_file(self, path: str, content: str) -> None:
+        """Write text content to the given file path, creating parent dirs.
+
+        Args:
+            path : The file path to write to.
+            content : The string content to write.
+
+        Returns:
+            None
+
+        """
         parent = os.path.dirname(path)
         if parent:
             ensure_dir(parent)
@@ -50,6 +87,17 @@ class Meetings:
             f.write(content)
 
     def summarize_transcript(self, transcript_text: str, prompt_path: str, llm=None) -> str:
+        """Summarize a transcript using the provided LLM and prompt template.
+
+        Args:
+            transcript_text : The raw transcript text to summarize.
+            prompt_path : Path to the summary prompt template file.
+            llm : Optional LLM client to use for generation.
+
+        Returns:
+            The generated summary string (fallback shortened text on error).
+
+        """
         llm = llm or self.llm
         try:
             prompt = self._read_file(prompt_path)
@@ -76,6 +124,21 @@ class Meetings:
         llm=None,
         write_links: bool = True,
     ) -> None:
+        """Archive meetings by summarizing transcripts and saving notes.
+
+        Args:
+            transcripts_dir : Directory containing transcript source files.
+            target_dir : Directory where summaries and notes will be written.
+            executive_summary_prompt_path : Path to the executive summary prompt template.
+            detailed_notes_prompt_path : Path to the detailed notes prompt template.
+            transcript_files : Optional explicit list of transcript files to process.
+            llm : Optional LLM to use for summarization.
+            write_links : Whether to append links to a meeting_notes.md index.
+
+        Returns:
+            None
+
+        """
         if transcript_files is None:
             transcript_files = self.find_transcript_files(transcripts_dir)
         if not transcript_files:

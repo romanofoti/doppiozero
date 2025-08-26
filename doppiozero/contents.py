@@ -25,9 +25,28 @@ class ContentFetcher:
     """Fetch and cache GitHub conversation content."""
 
     def __init__(self, token: Optional[str] = None):
+        """Initialize the ContentFetcher with an optional GitHub token.
+
+        Args:
+            token : Optional GitHub API token. If omitted, the GITHUB_TOKEN
+                    environment variable will be used when needed.
+
+        Returns:
+            None
+
+        """
         self.token = token or os.environ.get("GITHUB_TOKEN")
 
     def parse_content_info(self, input_str: str) -> Tuple[str, str, str, str]:
+        """Parse a GitHub conversation input (URL or owner/repo/type/number).
+
+        Args:
+            input_str : The conversation identifier, either a full URL or "owner/repo/type/number".
+
+        Returns:
+            A tuple (owner, repo, type, number).
+
+        """
         input_str = input_str.strip()
         if input_str.startswith("http"):
             parts = urllib.parse.urlparse(input_str)
@@ -45,15 +64,57 @@ class ContentFetcher:
     def _cache_path_for(
         self, cache_root: str, owner: str, repo: str, type_: str, number: str
     ) -> str:
+        """Return the filesystem path for a cached conversation JSON file.
+
+        Args:
+            cache_root : Root directory where caches are stored.
+            owner : GitHub repository owner.
+            repo : Repository name.
+            type_ : Conversation type (issue, pull, discussion).
+            number : Conversation number as string.
+
+        Returns:
+            The absolute path to the cached JSON file.
+
+        """
         return os.path.join(cache_root, "conversations", owner, repo, type_, f"{number}.json")
 
     def _load_cache(self, path: str) -> Optional[Dict[str, Any]]:
+        """Load cached conversation JSON if present.
+
+        Args:
+            path : Path to the cached JSON file.
+
+        Returns:
+            The parsed cache dictionary, or None if not found.
+
+        """
         return read_json_or_none(path)
 
     def _save_cache(self, path: str, data: Dict[str, Any]) -> None:
+        """Write conversation data to cache safely.
+
+        Args:
+            path : Path to write the cache file.
+            data : The conversation data dictionary to serialize.
+
+        Returns:
+            None
+
+        """
         write_json_safe(path, data)
 
     def _get_updated_at(self, data: Dict[str, Any], type_: str) -> Optional[str]:
+        """Extract an updated timestamp from conversation data.
+
+        Args:
+            data : Conversation data dictionary.
+            type_ : Conversation type string.
+
+        Returns:
+            An ISO timestamp string or None.
+
+        """
         if not data:
             return None
         if isinstance(data, dict):
@@ -61,14 +122,47 @@ class ContentFetcher:
         return None
 
     def fetch_issue(self, owner: str, repo: str, number: str) -> Dict[str, Any]:
+        """Fetch and normalize a GitHub issue into a dictionary.
+
+        Args:
+            owner : Repository owner.
+            repo : Repository name.
+            number : Issue number as string.
+
+        Returns:
+            A normalized dictionary representing the issue.
+
+        """
         client = GitHubClient(self.token)
         return client.fetch_issue(owner, repo, number)
 
     def fetch_pr(self, owner: str, repo: str, number: str) -> Dict[str, Any]:
+        """Fetch and normalize a GitHub pull request into a dictionary.
+
+        Args:
+            owner : Repository owner.
+            repo : Repository name.
+            number : Pull request number as string.
+
+        Returns:
+            A normalized dictionary representing the pull request.
+
+        """
         client = GitHubClient(self.token)
         return client.fetch_pr(owner, repo, number)
 
     def fetch_discussion(self, owner: str, repo: str, number: str) -> Dict[str, Any]:
+        """Fetch and normalize a GitHub discussion into a dictionary.
+
+        Args:
+            owner : Repository owner.
+            repo : Repository name.
+            number : Discussion number as string.
+
+        Returns:
+            A normalized dictionary representing the discussion, or a fallback dict when fetching fails.
+
+        """
         try:
             client = GitHubClient(self.token)
             return client.fetch_discussion(owner, repo, number)
@@ -84,6 +178,17 @@ class ContentFetcher:
         cache_path: Optional[str] = None,
         updated_at: Optional[str] = None,
     ) -> Dict[str, Any]:
+        """Fetch a GitHub conversation (issue/pr/discussion), optionally using a cache.
+
+        Args:
+            conversation_input : A URL or owner/repo/type/number identifier for the conversation.
+            cache_path : Optional cache root directory to read/write cached conversation JSON.
+            updated_at : Optional ISO timestamp used to avoid refetching up-to-date content.
+
+        Returns:
+            A normalized dictionary representing the fetched conversation, or an empty dict when skipping.
+
+        """
         owner, repo, type_, number = self.parse_content_info(conversation_input)
 
         # Check cache
@@ -141,11 +246,32 @@ class ContentManager:
     def __init__(
         self, token: Optional[str] = None, llm=None, fetcher: Optional[ContentFetcher] = None
     ):
+        """Initialize the ContentManager with optional GitHub token, LLM client, and fetcher.
+
+        Args:
+            token : Optional GitHub API token. If omitted, environment variable GITHUB_TOKEN is used.
+            llm : Optional LLM client instance. If omitted, a module-level default client is used.
+            fetcher : Optional ContentFetcher instance. If omitted, a default ContentFetcher is created.
+
+        Returns:
+            None
+
+        """
         self.token = token or os.environ.get("GITHUB_TOKEN")
         self.llm = llm or llm_client
         self.fetcher = fetcher or ContentFetcher()
 
     def search(self, query: str, max_results: int = 50):
+        """Search GitHub issues and return normalized search results.
+
+        Args:
+            query : The search query string.
+            max_results : Maximum number of results to return (default: 50).
+
+        Returns:
+            A list of normalized search result dictionaries.
+
+        """
         client = GitHubClient(self.token)
         results = client.search_issues(query, max_results=max_results)
         return results[:max_results]
@@ -157,6 +283,18 @@ class ContentManager:
         cache_path: Optional[str] = None,
         updated_at: Optional[str] = None,
     ) -> str:
+        """Generate an executive summary for a conversation using the LLM.
+
+        Args:
+            conversation_url : The URL or identifier of the conversation.
+            executive_summary_prompt_path : Path to the LLM prompt template.
+            cache_path : Optional path to cache fetched conversation data.
+            updated_at : Optional timestamp to avoid reprocessing up-to-date conversations.
+
+        Returns:
+            The generated summary string (may be empty on error).
+
+        """
         try:
             with open(executive_summary_prompt_path, "r", encoding="utf-8") as f:
                 prompt = f.read()
@@ -202,9 +340,24 @@ class ContentManager:
         skip_if_up_to_date: bool = False,
         indexer=None,
     ) -> Dict[str, Any]:
-        """Index a GitHub conversation summary using the provided indexer (defaults to vector_upsert.vector_upsert).
+        """Index a GitHub conversation summary using the provided indexer (defaults to the manager's vector_upsert).
 
-        This method orchestrates fetch -> summarize -> index and caches payloads when requested.
+        Args:
+            conversation_url : The conversation URL or identifier.
+            executive_summary_prompt_path : Path to the executive summary prompt template.
+            topics_prompt_path : Path to the topics extraction prompt template.
+            collection : The target vector collection name.
+            cache_path : Optional cache root for intermediate artifacts.
+            updated_at : Optional timestamp to skip older content.
+            model : Optional model identifier for embedding or extraction.
+            qdrant_url : Optional vector DB URL.
+            max_topics : Optional maximum number of topics to extract.
+            skip_if_up_to_date : When True, skip indexing if metadata shows content is up-to-date.
+            indexer : Optional custom indexer callable to perform the upsert.
+
+        Returns:
+            The payload dictionary that was prepared for indexing.
+
         """
         # default indexer uses the manager's built-in vector_upsert implementation
         indexer = indexer or self.vector_upsert
@@ -292,10 +445,22 @@ class ContentManager:
         skip_if_up_to_date: Optional[str] = None,
         vector_id_key: Optional[str] = None,
     ) -> None:
-        """
-        Embed text and upsert vectors with metadata into the configured vector store.
+        """Embed text and upsert vectors with metadata into the configured vector store.
+
+        Args:
+            text : The text to embed and upsert.
+            collection : Target collection name for vectors.
+            metadata : Metadata dict to attach to the vector.
+            model : Optional model identifier for embeddings.
+            qdrant_url : Optional URL for a Qdrant instance.
+            skip_if_up_to_date : Optional metadata key used to skip upserts when content is up-to-date.
+            vector_id_key : Optional metadata key to use as the vector ID.
+
+        Returns:
+            None
 
         This is the in-manager replacement for the old `vector_upsert.vector_upsert` module.
+
         """
         # Step 1: Generate embedding via llm_client
         try:
