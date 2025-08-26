@@ -26,24 +26,23 @@ class FinalReportNode(Node):
     Markdown report. It also handles errors related to context size and
     rate limits and records metadata about the final report in shared state.
 
-    Parameters
-    ----------
-    logger: logging.Logger, optional
-        An optional logger instance. If not provided, a module-level logger
-        is created.
-
-    Attributes
-    ----------
-    FINAL_REPORT_PROMPT: str
-        A template string used to build the LLM prompt.
-    shared: dict or None
-        A reference to the shared state captured during prep.
     """
 
     def __init__(self, logger=None):
         super().__init__()
         self.logger = logger or get_logger(__name__)
         self.shared = None
+
+    def __init__(self, logger=None):
+        """Initialize the FinalReportNode with an optional logger.
+
+        Args:
+            logger : Optional logging.Logger instance to use.
+
+        Returns:
+            None
+
+        """
 
     def prep(self, shared):
         """Prepare the LLM prompt by aggregating findings from shared memory.
