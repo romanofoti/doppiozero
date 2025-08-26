@@ -8,7 +8,8 @@ import json
 import os
 import logging
 
-from .utils.utils import get_logger
+from .utils.utils import get_logger, write_json_safe
+from .utils.scripts_common import safe_filename_for_url
 
 logger = get_logger(__name__)
 
@@ -88,12 +89,10 @@ def index_summary(
     }
     # Step 5: Optionally cache the payload
     if cache_path:
-        os.makedirs(cache_path, exist_ok=True)
-        safe_url = conversation_url.replace("/", "_").replace(":", "_")
+        safe_url = safe_filename_for_url(conversation_url)
         cache_file = os.path.join(cache_path, f"index_summary_{safe_url}.json")
         try:
-            with open(cache_file, "w", encoding="utf-8") as f:
-                json.dump(vector_payload_dc, f)
+            write_json_safe(cache_file, vector_payload_dc)
         except Exception as e:
             logger.error(f"Error writing cache file: {e}")
 

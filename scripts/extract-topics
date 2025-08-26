@@ -5,6 +5,8 @@ import sys
 import os
 import json
 from typing import List, Optional
+from doppiozero.utils.scripts_common import safe_filename_for_url
+from doppiozero.utils.utils import write_json_safe
 
 
 def extract_topics(
@@ -36,12 +38,10 @@ def extract_topics(
         topics = base_topics
 
     if cache_path:
-        os.makedirs(cache_path, exist_ok=True)
-        safe_url = conversation_url.replace("/", "_").replace(":", "_")
+        safe_url = safe_filename_for_url(conversation_url)
         cache_file = os.path.join(cache_path, f"topics_{safe_url}.json")
         try:
-            with open(cache_file, "w", encoding="utf-8") as f:
-                json.dump(topics, f)
+            write_json_safe(cache_file, topics)
         except Exception as e:
             print(f"Error writing cache file: {e}")
 

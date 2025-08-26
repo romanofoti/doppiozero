@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 
 # Top-level pragmatic helper imports used by the convenience orchestration
 from ..search_github_conversations import search_github_conversations
-from ..fetch_github_conversation import fetch_github_conversation
+from ..content_fetcher import content_fetcher
 from ..summarize_github_conversation import summarize_github_conversation
 from ..vector_upsert import vector_upsert
 
@@ -134,7 +134,7 @@ def run_deep_search(request: str, options: dict):
     (optional) upsert passes.
     """
     from ..search_github_conversations import search_github_conversations
-    from ..fetch_github_conversation import fetch_github_conversation
+    from ..content_fetcher import content_fetcher
     from ..summarize_github_conversation import summarize_github_conversation
     from ..vector_upsert import vector_upsert
 
@@ -150,34 +150,36 @@ def run_deep_search(request: str, options: dict):
     for depth in range(max_depth):
         q = f"{request} (pass {depth+1})"
         logger.info(f"Searching (pass {depth+1}): {q}")
-    result_ls = search_github_conversations(q, max_results=limit)
-    for r in result_ls:
-        url = r.get("url")
-        if not url:
-            continue
-        logger.info(f"Fetching conversation: {url}")
-        convo_dc = fetch_github_conversation(url, cache_path=cache_path)
-        summary = ""
-        try:
-            if prompt_path:
-                summary = summarize_github_conversation(url, prompt_path, cache_path=cache_path)
-            else:
-                summary = f"Summary for {url} (no prompt provided)"
-        except Exception as e:
-            logger.warning(f"Summary failed for {url}: {e}")
-        hit_dc = {
-            "url": url,
-            "summary": summary,
-            "score": r.get("score", 0.9),
-            "conversation": convo_dc,
-        }
-        all_hit_ls.append(hit_dc)
-        # Optionally upsert to vector DB
-        try:
-            if collection:
-                vector_upsert(summary or url, collection, {"url": url}, model=models.get("embed"))
-        except Exception as e:
-            logger.warning(f"Vector upsert failed for {url}: {e}")
+        result_ls = search_github_conversations(q, max_results=limit)
+        for r in result_ls:
+            url = r.get("url")
+            if not url:
+                continue
+            logger.info(f"Fetching conversation: {url}")
+            convo_dc = content_fetcher.fetch_github_conversation(url, cache_path=cache_path)
+            summary = ""
+            try:
+                if prompt_path:
+                    summary = summarize_github_conversation(url, prompt_path, cache_path=cache_path)
+                else:
+                    summary = f"Summary for {url} (no prompt provided)"
+            except Exception as e:
+                logger.warning(f"Summary failed for {url}: {e}")
+            hit_dc = {
+                "url": url,
+                "summary": summary,
+                "score": r.get("score", 0.9),
+                "conversation": convo_dc,
+            }
+            all_hit_ls.append(hit_dc)
+            # Optionally upsert to vector DB
+            try:
+                if collection:
+                    vector_upsert(
+                        summary or url, collection, {"url": url}, model=models.get("embed")
+                    )
+            except Exception as e:
+                logger.warning(f"Vector upsert failed for {url}: {e}")
 
     report_dc = {
         "request": request,

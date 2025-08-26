@@ -8,9 +8,10 @@ import os
 import json
 import logging
 
-from .fetch_github_conversation import fetch_github_conversation
+from .content_fetcher import content_fetcher
 from .llm_client import llm_client
-from .utils.utils import get_logger
+from .utils.utils import get_logger, write_json_safe
+from .utils.scripts_common import safe_filename_for_url
 
 logger = get_logger(__name__)
 
@@ -42,7 +43,7 @@ def summarize_github_conversation(
         return ""
 
     # Step 2: Fetch conversation and construct LLM prompt
-    convo_dc = fetch_github_conversation(
+    convo_dc = content_fetcher.fetch_github_conversation(
         conversation_url, cache_path=cache_path, updated_at=updated_at
     )
     convo_text = json.dumps(convo_dc, indent=2)[:8000]
@@ -60,12 +61,10 @@ def summarize_github_conversation(
 
     # Step 3: Optionally cache the summary
     if cache_path:
-        os.makedirs(cache_path, exist_ok=True)
-        safe_url = conversation_url.replace("/", "_").replace(":", "_")
+        safe_url = safe_filename_for_url(conversation_url)
         cache_file = os.path.join(cache_path, f"summary_{safe_url}.json")
         try:
-            with open(cache_file, "w", encoding="utf-8") as f:
-                json.dump({"summary": summary}, f)
+            write_json_safe(cache_file, {"summary": summary})
         except Exception as e:
             logger.error(f"Error writing cache file: {e}")
 

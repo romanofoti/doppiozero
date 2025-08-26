@@ -62,8 +62,31 @@ def read_json(path):
 
 
 def write_json(path, data):
+    # Ensure parent directory exists
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f)
+        json.dump(data, f, indent=2)
+
+
+def read_json_or_none(path):
+    """Read JSON from path, return None if file doesn't exist or can't be read."""
+    if not os.path.exists(path):
+        return None
+    try:
+        return read_json(path)
+    except Exception:
+        return None
+
+
+def write_json_safe(path, data, indent: int = 2):
+    """Write JSON to path, creating parent directories and pretty-printing by default."""
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=indent)
 
 
 def ensure_dir(path):
