@@ -20,15 +20,6 @@ class GitHubClient:
     """
 
     def __init__(self, token: Optional[str] = None):
-        """Initialize the GitHub client adapter with an optional token.
-
-        Args:
-            token : Optional GitHub API token; falls back to GITHUB_TOKEN env var.
-
-        Returns:
-            None
-
-        """
         token = token or os.environ.get("GITHUB_TOKEN")
         if Github is None:
             raise ImportError("PyGithub is not installed")
@@ -38,29 +29,11 @@ class GitHubClient:
             self.gh = Github()
 
     def _normalize_user(self, u) -> Optional[str]:
-        """Normalize a PyGithub user object to a login string.
-
-        Args:
-            u : A PyGithub user object or None.
-
-        Returns:
-            The user's login string or None.
-
-        """
         if not u:
             return None
         return getattr(u, "login", None)
 
     def _normalize_comment(self, c) -> Dict[str, Any]:
-        """Normalize a comment object to a plain dictionary.
-
-        Args:
-            c : A PyGithub comment-like object.
-
-        Returns:
-            A dictionary with keys: author, body, created_at, updated_at, url.
-
-        """
         return {
             "author": self._normalize_user(getattr(c, "user", None)),
             "body": getattr(c, "body", None),

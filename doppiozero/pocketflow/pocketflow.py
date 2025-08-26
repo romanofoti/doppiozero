@@ -6,40 +6,136 @@ class BaseNode:
         self.params, self.successors = {}, {}
 
     def set_params(self, params):
+        """Set parameters used by this node during execution.
+
+        Args:
+            params : A mapping of parameter names to values used by the node.
+
+        Returns:
+            None
+
+        """
         self.params = params
 
     def next(self, node, action="default"):
+        """Register a successor node for a given transition action.
+
+        Args:
+            node : The target node to transition to.
+            action : The action string that triggers this transition.
+
+        Returns:
+            The node that was registered as successor.
+
+        """
         if action in self.successors:
             warnings.warn(f"Overwriting successor for action '{action}'")
         self.successors[action] = node
         return node
 
     def prep(self, shared):
+        """Prepare the node using the shared flow state.
+
+        This method is intended to be overridden by subclasses to compute
+        any preparatory value consumed by :meth:`exec`.
+
+        Args:
+            shared : The shared state dictionary provided by the Flow.
+
+        Returns:
+            Any preparatory value consumed by :meth:`exec`.
+
+        """
         pass
 
     def exec(self, prep_res):
+        """Execute the node's main logic.
+
+        Args:
+            prep_res : The value returned by :meth:`prep`.
+
+        Returns:
+            The execution result which may be used by :meth:`post` or as a transition action.
+
+        """
         pass
 
     def post(self, shared, prep_res, exec_res):
+        """Post-process the execution result and update shared state.
+
+        Args:
+            shared : The shared state dictionary for the Flow.
+            prep_res : The value returned by :meth:`prep`.
+            exec_res : The value returned by :meth:`exec`.
+
+        Returns:
+            A transition action string or other control token consumed by the Flow.
+
+        """
         pass
 
     def _exec(self, prep_res):
+        """Internal wrapper that calls :meth:`exec`.
+
+        Args:
+            prep_res : The value returned by :meth:`prep`.
+
+        Returns:
+            The result from :meth:`exec`.
+
+        """
         return self.exec(prep_res)
 
     def _run(self, shared):
+        """Run the node lifecycle: prep -> exec -> post.
+
+        Args:
+            shared : The shared flow state.
+
+        Returns:
+            The value returned by :meth:`post` (usually a transition action).
+
+        """
         p = self.prep(shared)
         e = self._exec(p)
         return self.post(shared, p, e)
 
     def run(self, shared):
+        """Run this node outside the context of a Flow.
+
+        Args:
+            shared : The shared flow state.
+
+        Returns:
+            The result of running the node lifecycle.
+
+        """
         if self.successors:
             warnings.warn("Node won't run successors. Use Flow.")
         return self._run(shared)
 
     def __rshift__(self, other):
+        """Syntactic sugar to chain nodes using >> operator.
+
+        Args:
+            other : Target node to chain.
+
+        Returns:
+            The registered successor node.
+
+        """
         return self.next(other)
 
     def __sub__(self, action):
+        """Create a conditional transition helper using '-' operator.
+
+        Args:
+            action : The action string representing the transition key.
+
+        Returns:
+            A helper object that can be chained to register conditional transitions.
+
+        """
         if isinstance(action, str):
             return _ConditionalTransition(self, action)
         raise TypeError("Action must be a string")
@@ -87,13 +183,22 @@ class Flow(BaseNode):
         return start
 
     def get_next_node(self, curr, action):
-        nxt = curr.successors.get(action or "default")
+        # Normalize action to a string key; if a node returned a structured
+        # result (e.g. a dict), treat it as the default transition. This
+        # avoids TypeError for unhashable action values and makes flows more
+        # tolerant to nodes that return structured results.
+        key = action if isinstance(action, str) else "default"
+        nxt = curr.successors.get(key)
         if not nxt and curr.successors:
             warnings.warn(f"Flow ends: '{action}' not found in {list(curr.successors)}")
         return nxt
 
     def _orch(self, shared, params=None):
-        curr, p, last_action = copy.copy(self.start_node), (params or {**self.params}), None
+        curr, p, last_action = (
+            copy.copy(self.start_node),
+            (params or {**self.params}),
+            None,
+        )
         while curr:
             curr.set_params(p)
             last_action = curr._run(shared)
@@ -106,7 +211,11 @@ class Flow(BaseNode):
         return self.post(shared, p, o)
 
     def post(self, shared, prep_res, exec_res):
-        return exec_res
+        # If a flow-level structured result (e.g. final_report) was stored
+        # in shared by nodes (such as FinalReportNode), prefer returning
+        # that instead of the raw exec_res. This prevents accidentally
+        # treating a dict as a transition action in the orchestrator.
+        return shared.get("final_report", exec_res)
 
 
 class BatchFlow(Flow):
@@ -166,7 +275,11 @@ class AsyncParallelBatchNode(AsyncNode, BatchNode):
 
 class AsyncFlow(Flow, AsyncNode):
     async def _orch_async(self, shared, params=None):
-        curr, p, last_action = copy.copy(self.start_node), (params or {**self.params}), None
+        curr, p, last_action = (
+            copy.copy(self.start_node),
+            (params or {**self.params}),
+            None,
+        )
         while curr:
             curr.set_params(p)
             last_action = (
