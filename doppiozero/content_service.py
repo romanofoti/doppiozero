@@ -21,7 +21,7 @@ from .utils.scripts_common import safe_filename_for_url
 logger = get_logger(__name__)
 
 
-class Fetcher:
+class ContentFetcher:
     """Fetch and cache GitHub conversation content."""
 
     def __init__(self, token: Optional[str] = None):
@@ -135,13 +135,15 @@ class Fetcher:
         return data
 
 
-class Manager:
+class ContentManager:
     """High-level manager that searches and summarizes GitHub conversations."""
 
-    def __init__(self, token: Optional[str] = None, llm=None, fetcher: Optional[Fetcher] = None):
+    def __init__(
+        self, token: Optional[str] = None, llm=None, fetcher: Optional[ContentFetcher] = None
+    ):
         self.token = token or os.environ.get("GITHUB_TOKEN")
         self.llm = llm or llm_client
-        self.fetcher = fetcher or Fetcher()
+        self.fetcher = fetcher or ContentFetcher()
 
     def search(self, query: str, max_results: int = 50):
         client = GitHubClient(self.token)
@@ -188,5 +190,5 @@ class Manager:
 
 
 # Singletons
-fetcher = Fetcher()
-manager = Manager(fetcher=fetcher)
+content_fetcher = ContentFetcher()
+content_manager = ContentManager(fetcher=content_fetcher)
