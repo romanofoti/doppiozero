@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional
 import json
 import logging
 
-from .llm_client import default_llm_client as llm_client
+from .llm_client import llm_client
 from .utils.utils import get_logger
 
 logger = get_logger(__name__)

@@ -88,4 +88,6 @@ class LLMClient:
 # Backward-compat convenience: a default client instance can be used by callers
 # that prefer not to instantiate explicitly. We will update callers to use the
 # class directly, but keep this here for optional compatibility.
-default_llm_client = LLMClient()
+llm_client = LLMClient()
+
+# Note: `llm_client` is the canonical default client instance.
