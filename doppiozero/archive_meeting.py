@@ -6,6 +6,7 @@ Agentic module for archiving meetings: processes transcripts, generates summarie
 import os
 from typing import List, Optional
 import logging
+from .utils.utils import get_logger
 import datetime
 
 
@@ -37,7 +38,7 @@ def generate_summary(transcript: str, prompt: str) -> str:
     return f"Summary for transcript:\n{transcript[:100]}...\nPrompt used: {prompt[:60]}..."
 
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def archive_meeting(

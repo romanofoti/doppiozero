@@ -8,8 +8,9 @@ import json
 import logging
 
 from .llm_client import embed
+from .utils.utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def vector_upsert(

@@ -8,7 +8,9 @@ import json
 import os
 import logging
 
-logger = logging.getLogger(__name__)
+from .utils.utils import get_logger
+
+logger = get_logger(__name__)
 
 
 def index_summary(

@@ -6,8 +6,9 @@ Module for bulk indexing multiple GitHub conversations into a vector database fo
 from typing import List, Optional
 import logging
 from .index_summary import index_summary
+from .utils.utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def index_summaries(

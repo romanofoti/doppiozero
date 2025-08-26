@@ -2,6 +2,7 @@ import json
 import logging
 from ..pocketflow.pocketflow import Node
 from ..utils.utils import get_logger
+import logging
 
 
 class FinalReportNode(Node):
@@ -20,7 +21,7 @@ class FinalReportNode(Node):
 
     def __init__(self, logger=None):
         super().__init__()
-        self.logger = logger or logging.getLogger(__name__)
+        self.logger = logger or get_logger(__name__)
         self.shared = None
 
     def prep(self, shared):

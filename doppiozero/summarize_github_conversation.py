@@ -10,8 +10,9 @@ import logging
 
 from .fetch_github_conversation import fetch_github_conversation
 from .llm_client import generate
+from .utils.utils import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 def summarize_github_conversation(
