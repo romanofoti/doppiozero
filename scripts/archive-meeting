@@ -4,7 +4,7 @@ import argparse
 
 import datetime
 from typing import Optional
-from doppiozero.meetings import archive_meeting
+from doppiozero.meetings import meetings
 
 
 def archive_meeting_cli(
@@ -31,7 +31,7 @@ def main():
     parser.add_argument("--detailed-notes-prompt-path", required=True)
     args = parser.parse_args()
 
-    archive_meeting_cli(
+    meetings.archive_meeting(
         transcripts_dir=args.transcripts_dir,
         target_dir=args.target_dir,
         executive_summary_prompt_path=args.executive_summary_prompt_path,
