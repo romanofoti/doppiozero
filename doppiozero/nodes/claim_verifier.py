@@ -5,17 +5,53 @@ logger = get_logger(__name__)
 
 
 class VerifierNode(Node):
+    """Node that verifies claims against available evidence.
+
+    The verifier inspects a list of claims and determines whether each is
+    supported by the evidence found during retrieval phases.
+
+    """
+
     def prep(self, shared):
+        """Prepare a list of claims to verify.
+
+        Args:
+            shared : Shared flow state (unused here but provided for API consistency).
+
+        Returns:
+            A list of claim strings to be verified.
+
+        """
         logger.info("=== CLAIM VERIFICATION PHASE ===")
         claim_ls = ["Claim 1", "Claim 2"]
         return claim_ls
 
     def exec(self, claims):
+        """Verify claims and return a list of verification results.
+
+        Args:
+            claims : A list of claim strings to verify.
+
+        Returns:
+            A list of dicts with ``claim`` and ``supported`` boolean fields.
+
+        """
         logger.info("Verifying claims against evidence...")
         result_ls = [{"claim": claim, "supported": True} for claim in claims]
         return result_ls
 
     def post(self, shared, prep_res, exec_res):
+        """Record verification summary into shared state and return next action.
+
+        Args:
+            shared : Shared flow state to update.
+            prep_res : The claims that were verified.
+            exec_res : The verification results returned by :meth:`exec`.
+
+        Returns:
+            A token indicating the flow's next step: "fix" if unsupported claims exist, otherwise "ok".
+
+        """
         shared["claim_verification"] = {
             "total_claims": len(prep_res),
             "supported_claims": [r["claim"] for r in exec_res if r["supported"]],

@@ -51,6 +51,17 @@ class GitHubClient:
         }
 
     def fetch_issue(self, owner: str, repo: str, number: str) -> Dict[str, Any]:
+        """Fetch an issue and return a normalized dictionary representation.
+
+        Args:
+            owner : Repository owner/login.
+            repo : Repository name.
+            number : Issue number (as string or int).
+
+        Returns:
+            A dictionary with normalized issue fields (url, title, body, comments, etc.).
+
+        """
         repository = self.gh.get_repo(f"{owner}/{repo}")
         issue = repository.get_issue(int(number))  # type: ignore
 
@@ -81,6 +92,17 @@ class GitHubClient:
         return normalized_dc
 
     def fetch_pr(self, owner: str, repo: str, number: str) -> Dict[str, Any]:
+        """Fetch a pull request and return a normalized dictionary representation.
+
+        Args:
+            owner : Repository owner/login.
+            repo : Repository name.
+            number : Pull request number (as string or int).
+
+        Returns:
+            A dictionary with normalized pull request fields (url, title, body, reviews, commits, diff, etc.).
+
+        """
         repository = self.gh.get_repo(f"{owner}/{repo}")
         pr = repository.get_pull(int(number))  # type: ignore
 
@@ -148,6 +170,17 @@ class GitHubClient:
         return normalized_dc
 
     def fetch_discussion(self, owner: str, repo: str, number: str) -> Dict[str, Any]:
+        """Fetch a discussion via REST fallback and return a normalized dict.
+
+        Args:
+            owner : Repository owner/login.
+            repo : Repository name.
+            number : Discussion number (as string or int).
+
+        Returns:
+            A dictionary with normalized discussion fields, or a minimal fallback dict on error.
+
+        """
         # Attempt to call via REST
         try:
             path = f"/repos/{owner}/{repo}/discussions/{number}"
@@ -169,6 +202,16 @@ class GitHubClient:
             }
 
     def search_issues(self, query: str, max_results: int = 50) -> List[Dict[str, Any]]:
+        """Search issues/PRs/discussions using a GitHub search query.
+
+        Args:
+            query : The GitHub search query string.
+            max_results : Maximum number of results to return.
+
+        Returns:
+            A list of minimal dicts containing url and updated_at for each match.
+
+        """
         results = self.gh.search_issues(query)  # type: ignore
         out_ls: List[Dict[str, Any]] = []
         count = 0

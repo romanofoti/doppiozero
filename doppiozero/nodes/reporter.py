@@ -19,12 +19,53 @@ class FinalReportNode(Node):
         "Return only the Markdown document—no extra commentary."
     )
 
+    """Node that generates a comprehensive final Markdown report using an LLM.
+
+    The final report node gathers all findings from shared memory, builds a
+    prompt using a static template and calls an LLM to produce the final
+    Markdown report. It also handles errors related to context size and
+    rate limits and records metadata about the final report in shared state.
+
+    Parameters
+    ----------
+    logger: logging.Logger, optional
+        An optional logger instance. If not provided, a module-level logger
+        is created.
+
+    Attributes
+    ----------
+    FINAL_REPORT_PROMPT: str
+        A template string used to build the LLM prompt.
+    shared: dict or None
+        A reference to the shared state captured during prep.
+    """
+
     def __init__(self, logger=None):
         super().__init__()
         self.logger = logger or get_logger(__name__)
         self.shared = None
 
     def prep(self, shared):
+        """Prepare the LLM prompt by aggregating findings from shared memory.
+
+        Args:
+            shared : The shared flow state containing memory, clarifications, and other metadata collected during the flow.
+
+        Returns:
+            The fully rendered prompt string to send to the LLM.
+
+        """
+
+    def prep(self, shared):
+        """Prepare the LLM prompt by aggregating findings from shared memory.
+
+        Args:
+            shared : The shared flow state containing memory, clarifications, and other metadata collected during the flow. This method returns the prompt string that will be provided to the LLM in :meth:`exec`.
+
+        Returns:
+            The fully rendered prompt to send to the LLM.
+
+        """
         self.shared = shared
         self.logger.info("=== FINAL REPORT PHASE ===")
         self.logger.info("Generating final report from all gathered data...")
@@ -58,6 +99,17 @@ class FinalReportNode(Node):
         return prompt
 
     def exec(self, prompt):
+        """Call the LLM to generate the final report from the prompt.
+
+        The method chooses a reasoning model from shared configuration when available and falls back to a default. It stores the draft answer in shared state under ``draft_answer``. If the LLM call fails due to context size or rate limits, a control token is returned to trigger a compaction or retry workflow.
+
+        Args:
+            prompt : The prompt string prepared in :meth:`prep`.
+
+        Returns:
+            The generated draft report, or the token "context_too_large" when retrying is required.
+
+        """
         try:
             # Safely obtain the reasoning model from shared configuration.
             # Use a sensible default model name when the key is missing so the
@@ -135,11 +187,41 @@ class FinalReportNode(Node):
         return "complete"
 
     def call_llm(self, prompt, model):
+        """Helper that performs the LLM call.
+
+        In the default implementation this is a stub that returns a placeholder Markdown string. Production implementations may proxy to a real LLM client.
+
+        Args:
+            prompt : The prompt to send to the model.
+            model : The model identifier to use for the call.
+
+        Returns:
+            The LLM-generated draft of the final report.
+
+        """
         self.logger.debug(f"LLM called with model {model} and prompt length {len(prompt)}")
         return "# Final Markdown Report\n\n...LLM generated content..."
 
     def context_too_large_error(self, msg):
+        """Return True when the message indicates the model's context is too large.
+
+        Args:
+            msg : The exception message text to inspect.
+
+        Returns:
+            True when the message signals the context is too large.
+
+        """
         return "context too large" in msg.lower()
 
     def rate_limit_error(self, msg):
+        """Return True when the message indicates a rate limit was hit.
+
+        Args:
+            msg : The exception message text to inspect.
+
+        Returns:
+            True when the message signals a rate limit error.
+
+        """
         return "rate limit" in msg.lower()
