@@ -14,6 +14,7 @@ import os
 import json
 import datetime
 import urllib.parse
+from typing import Optional, Tuple, Dict, Any
 
 from .clients.github import GitHubClient
 from .clients.llm import llm_client
@@ -162,7 +163,8 @@ class ContentFetcher:
             number : Discussion number as string.
 
         Returns:
-            A normalized dictionary representing the discussion, or a fallback dict when fetching fails.
+            A normalized dictionary representing the discussion, or a fallback
+            dict when fetching fails.
 
         """
         try:
@@ -183,12 +185,16 @@ class ContentFetcher:
         """Fetch a GitHub conversation (issue/pr/discussion), optionally using a cache.
 
         Args:
-            conversation_input : A URL or owner/repo/type/number identifier for the conversation.
-            cache_path : Optional cache root directory to read/write cached conversation JSON.
-            updated_at : Optional ISO timestamp used to avoid refetching up-to-date content.
+            conversation_input : A URL or owner/repo/type/number identifier for
+                the conversation.
+            cache_path : Optional cache root directory to read/write cached
+                conversation JSON.
+            updated_at : Optional ISO timestamp used to avoid refetching
+                up-to-date content.
 
         Returns:
-            A normalized dictionary representing the fetched conversation, or an empty dict when skipping.
+            A normalized dictionary representing the fetched conversation, or
+            an empty dict when skipping.
 
         """
         owner, repo, type_, number = self.parse_content_info(conversation_input)
@@ -251,9 +257,11 @@ class ContentManager:
         """Initialize the ContentManager with optional GitHub token, LLM client, and fetcher.
 
         Args:
-            token : Optional GitHub API token. If omitted, environment variable GITHUB_TOKEN is used.
+            token : Optional GitHub API token. If omitted, environment
+                variable GITHUB_TOKEN is used.
             llm : Optional LLM client instance. If omitted, a module-level default client is used.
-            fetcher : Optional ContentFetcher instance. If omitted, a default ContentFetcher is created.
+            fetcher : Optional ContentFetcher instance. If omitted, a default
+                ContentFetcher is created.
 
         Returns:
             None
@@ -342,7 +350,8 @@ class ContentManager:
         skip_if_up_to_date: bool = False,
         indexer=None,
     ) -> Dict[str, Any]:
-        """Index a GitHub conversation summary using the provided indexer (defaults to the manager's vector_upsert).
+        """Index a GitHub conversation summary using the provided indexer
+        (defaults to the manager's vector_upsert).
 
         Args:
             conversation_url : The conversation URL or identifier.
@@ -384,13 +393,13 @@ class ContentManager:
             else f"Executive summary for {conversation_url}: {exec_prompt[:60]}..."
         )
 
-        # Topics extraction (simple placeholder using prompt)
+        # Topics extraction (simple placeholder using prompt file if present)
         try:
             with open(topics_prompt_path, "r", encoding="utf-8") as f:
-                topics_prompt = f.read()
+                _ = f.read()
         except Exception as e:
             logger.error(f"Error reading topics prompt: {e}")
-            topics_prompt = ""
+            # proceed with default topic list
         base_topic_ls = ["performance", "authentication", "database", "caching", "bug-fix"]
         topic_ls = base_topic_ls[:max_topics] if max_topics is not None else base_topic_ls
 
@@ -458,7 +467,8 @@ class ContentManager:
             metadata : Metadata dict to attach to the vector.
             model : Optional model identifier for embeddings.
             qdrant_url : Optional URL for a Qdrant instance.
-            skip_if_up_to_date : Optional metadata key used to skip upserts when content is up-to-date.
+            skip_if_up_to_date : Optional metadata key used to skip upserts when
+                content is up-to-date.
             vector_id_key : Optional metadata key to use as the vector ID.
 
         Returns:
@@ -496,7 +506,9 @@ class ContentManager:
 
         # Step 5: Log the simulated upsert (real implementation should call a provider API)
         logger.info(
-            f"Upserted vector to collection '{collection}': {json.dumps(vector_payload_dc)[:120]}..."
+            "Upserted vector to collection '%s': %s...",
+            collection,
+            json.dumps(vector_payload_dc)[:120],
         )
 
 

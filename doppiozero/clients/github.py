@@ -208,7 +208,8 @@ class GitHubClient:
             number : Discussion number (as string or int).
 
         Returns:
-            A dictionary with normalized discussion fields, or a minimal fallback dict on error.
+            A dictionary with normalized discussion fields, or a minimal fallback
+            dict on error.
 
         """
         # Attempt to call via REST

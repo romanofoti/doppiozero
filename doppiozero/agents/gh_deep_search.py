@@ -2,7 +2,7 @@
 GitHubDeepResearchAgent - Multi-Stage Research Pipeline for GitHub Conversations (Python)
 """
 
-from ..pocketflow.pocketflow import Node, Flow
+from ..pocketflow.pocketflow import Flow
 from ..utils.utils import get_logger
 
 from ..contents import content_manager, content_fetcher
@@ -35,17 +35,33 @@ class GitHubAgent:
         """Initialize the agent with a request and options.
 
         Args:
-            request : The user's natural-language research request.
-            options : A mapping of optional parameters (collection, models, etc.).
+            request: The user's natural-language research request.
+            options: A mapping of optional parameters (collection, models, etc.).
 
-        Returns:
-            None
-
+        The initializer creates `self.shared` runtime state used by the
+        Flow nodes and then builds the flow graph.
         """
-        # cleaned accidental insertion; continue initialization
+        # Save inputs
         self.request = request
         self.options = options or {}
+
+        # Use module-level logger, but expose it on the instance for tests
         self.logger = logger
+
+        # Build models defaults (allow explicit model keys or top-level shortcuts)
+        provided_models = self.options.get("models") or {}
+        models = {
+            **{
+                "fast": self.options.get("fast_model") or provided_models.get("fast") or "default",
+                "reasoning": self.options.get("reasoning_model")
+                or provided_models.get("reasoning")
+                or "default",
+                "embed": self.options.get("embed_model")
+                or provided_models.get("embed")
+                or "default",
+            },
+            **provided_models,
+        }
 
         # Shared runtime state passed through the flow
         self.shared = {
@@ -58,22 +74,7 @@ class GitHubAgent:
             "verbose": self.options.get("verbose", False),
             "search_modes": self.options.get("search_modes", ["semantic", "keyword"]),
             "cache_path": self.options.get("cache_path"),
-            # Ensure reasonable defaults for model names so nodes can assume
-            # keys exist. Users may override via options['models'].
-            "models": {
-                **{
-                    "fast": self.options.get("fast_model")
-                    or self.options.get("models", {}).get("fast")
-                    or "default",
-                    "reasoning": self.options.get("reasoning_model")
-                    or self.options.get("models", {}).get("reasoning")
-                    or "default",
-                    "embed": self.options.get("embed_model")
-                    or self.options.get("models", {}).get("embed")
-                    or "default",
-                },
-                **(self.options.get("models") or {}),
-            },
+            "models": models,
             "script_dir": self.options.get("script_dir", "bin"),
             "parallel": self.options.get("parallel", False),
             "done": False,
@@ -155,16 +156,19 @@ def start(request: str, options: dict):
 def run_deep_search(request: str, options: dict):
     """A pragmatic deep-search orchestration that uses existing helper modules.
 
-    This function provides a concrete implementation while the Node classes are progressively improved. It performs iterative search -> fetch -> summarize -> (optional) upsert passes.
+    cache_path = _sanitize_cache_path(options.get("cache_path"))
+    prompt_path = options.get("executive_summary_prompt_path", "")
+    models = options.get("models", {})
 
-    Args:
-        request : The user's research request.
-        options : A mapping of runtime options (collection, limit, cache_path, etc.).
-
-    Returns:
-        A report dictionary containing the collected hits and a short summary.
+    # Additional safeguard: warn if we dropped a suspicious cache_path value
+    if options.get("cache_path") and cache_path is None:
+        logger.warning(
+            "Ignoring invalid cache_path value (looks like editor/settings content) "
+            "instead of a filesystem path"
+        )
 
     """
+    options = options or {}
     collection = options.get("collection")
     limit = options.get("limit", 5)
     max_depth = options.get("max_depth", 2)
@@ -172,18 +176,38 @@ def run_deep_search(request: str, options: dict):
     prompt_path = options.get("executive_summary_prompt_path", "")
     models = options.get("models", {})
 
+    # Sanitize cache_path to avoid accidental editor/settings strings being used as filenames
+    if isinstance(cache_path, str) and cache_path.strip().startswith(('"', "{", "[")):
+        logger.warning(
+            "Ignoring invalid cache_path value (looks like editor/settings content) "
+            "instead of a filesystem path"
+        )
+        cache_path = None
+
     all_hit_ls = []
 
     for depth in range(max_depth):
         q = f"{request} (pass {depth+1})"
         logger.info(f"Searching (pass {depth+1}): {q}")
-        result_ls = content_manager.search(q, max_results=limit)
+        try:
+            result_ls = content_manager.search(q, max_results=limit) or []
+        except Exception as e:
+            # Catch FileNotFoundError and any other unexpected errors from the search layer
+            logger.warning(f"Search failed on pass {depth+1} for query '{q}': {e}")
+            continue
+
         for r in result_ls:
             url = r.get("url")
             if not url:
                 continue
             logger.info(f"Fetching conversation: {url}")
-            convo_dc = content_fetcher.fetch_github_conversation(url, cache_path=cache_path)
+            try:
+                convo_dc = content_fetcher.fetch_github_conversation(url, cache_path=cache_path)
+            except Exception as e:
+                # Protect the orchestration from crashes due to bad cache_path or fetch errors
+                logger.warning(f"Fetch failed for {url}: {e}")
+                continue
+
             summary = ""
             try:
                 if prompt_path:
@@ -192,6 +216,7 @@ def run_deep_search(request: str, options: dict):
                     summary = f"Summary for {url} (no prompt provided)"
             except Exception as e:
                 logger.warning(f"Summary failed for {url}: {e}")
+
             hit_dc = {
                 "url": url,
                 "summary": summary,
@@ -199,6 +224,7 @@ def run_deep_search(request: str, options: dict):
                 "conversation": convo_dc,
             }
             all_hit_ls.append(hit_dc)
+
             # Optionally upsert to vector DB
             try:
                 if collection:
