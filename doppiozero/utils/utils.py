@@ -6,6 +6,7 @@ Shared utility functions for agentic workflows.
 import os
 import json
 import logging
+import sys
 from typing import Optional
 
 # **********************************
@@ -156,8 +157,6 @@ def read_urls_from_stdin_or_file(path: Optional[str]):
         A list of URL strings.
 
     """
-    import sys
-
     if path:
         with open(path, "r", encoding="utf-8") as f:
             return [l.strip() for l in f.readlines() if l.strip()]

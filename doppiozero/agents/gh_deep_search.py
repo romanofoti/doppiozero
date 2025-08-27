@@ -167,8 +167,6 @@ def run_deep_search(request: str, options: dict):
         A report dictionary containing the collected hits and a short summary.
 
     """
-    from ..contents import content_manager, content_fetcher
-
     collection = options.get("collection")
     limit = options.get("limit", 5)
     max_depth = options.get("max_depth", 2)
