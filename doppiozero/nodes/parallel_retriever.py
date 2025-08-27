@@ -1,4 +1,3 @@
-from ..pocketflow.pocketflow import Node
 from ..utils.utils import get_logger
 from .retriever import RetrieverNode
 

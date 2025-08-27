@@ -49,7 +49,8 @@ class VerifierNode(Node):
             exec_res : The verification results returned by :meth:`exec`.
 
         Returns:
-            A token indicating the flow's next step: "fix" if unsupported claims exist, otherwise "ok".
+            A token indicating the flow's next step. Returns "fix" if there are
+            unsupported claims, otherwise "ok".
 
         """
         shared["claim_verification"] = {
@@ -58,7 +59,7 @@ class VerifierNode(Node):
             "unsupported_claims": [r["claim"] for r in exec_res if not r["supported"]],
             "verification_errors": 0,
         }
-        logger.info(f"✓ Claim verification complete: {len(exec_res)} claims checked.")
+        logger.info(f"\u2713 Claim verification complete: {len(exec_res)} claims checked.")
         if shared["claim_verification"]["unsupported_claims"]:
             return "fix"
         return "ok"

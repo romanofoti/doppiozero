@@ -1,5 +1,3 @@
-import json
-import logging
 from ..pocketflow.pocketflow import Node
 from ..utils.utils import get_logger
 
@@ -59,17 +57,22 @@ class InitialResearchNode(Node):
     def post(self, shared, prep_res, exec_res):
         """Store initial research results into shared memory.
 
-        This initializes the shared memory structure with collected hits, notes, and the search query history.
+        This initializes the shared memory structure with collected hits, notes,
+        and the search query history.
 
-        Args:
-            shared : Shared flow state.
-            prep_res : The search plan returned by :meth:`prep`.
-            exec_res : The results returned by :meth:`exec`.
+            Args:
+                shared : Shared flow state.
+                prep_res : The search plan returned by :meth:`prep`.
+                exec_res : The results returned by :meth:`exec`.
 
-        Returns:
-            None
+            Returns:
+                None
 
         """
-        shared["memory"] = {"hits": exec_res, "notes": [], "search_queries": [shared["request"]]}
-        logger.info(f"✓ Initial research complete: {len(exec_res)} conversations collected")
+        shared["memory"] = {
+            "hits": exec_res,
+            "notes": [],
+            "search_queries": [shared["request"]],
+        }
+        logger.info(f"\u2713 Initial research complete: {len(exec_res)} conversations collected")
         return None

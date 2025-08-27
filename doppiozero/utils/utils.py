@@ -154,7 +154,8 @@ def read_urls_from_stdin_or_file(path: Optional[str]):
     """Return a list of URLs from a file path or stdin (if path is None).
 
     Args:
-        path : Optional path to a file containing one URL per line. If None, URLs are read from stdin.
+        path : Optional path to a file containing one URL per line. If None,
+               URLs are read from stdin.
 
     Returns:
         A list of URL strings.
@@ -162,10 +163,10 @@ def read_urls_from_stdin_or_file(path: Optional[str]):
     """
     if path:
         with open(path, "r", encoding="utf-8") as f:
-            return [l.strip() for l in f.readlines() if l.strip()]
+            return [line.strip() for line in f.readlines() if line.strip()]
     else:
         data = sys.stdin.read()
-        return [l.strip() for l in data.splitlines() if l.strip()]
+        return [line.strip() for line in data.splitlines() if line.strip()]
 
 
 def safe_filename_for_url(url: str) -> str:
@@ -178,7 +179,11 @@ def safe_filename_for_url(url: str) -> str:
         A string suitable for use as a filename fragment.
 
     """
-    return url.replace("https://", "").replace("http://", "").replace("/", "_").replace(":", "_")
+    s = url.replace("https://", "")
+    s = s.replace("http://", "")
+    s = s.replace("/", "_")
+    s = s.replace(":", "_")
+    return s
 
 
 def load_json_if_exists(path: Optional[str]):

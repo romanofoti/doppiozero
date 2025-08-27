@@ -126,7 +126,8 @@ class GitHubClient:
             number : Pull request number (as string or int).
 
         Returns:
-            A dictionary with normalized pull request fields (url, title, body, reviews, commits, diff, etc.).
+            A dictionary with normalized pull request fields. Includes keys such as
+            url, title, body, reviews, commits and diff when available.
 
         """
         repository = self.gh.get_repo(f"{owner}/{repo}")
@@ -147,16 +148,17 @@ class GitHubClient:
             for r in pr.get_reviews()
         ]
         review_comment_ls = [self._normalize_comment(c) for c in pr.get_review_comments()]
-        commit_ls = [
-            {
-                "sha": getattr(c, "sha", None),
-                "message": (
-                    getattr(c, "commit", {}).get("message") if getattr(c, "commit", None) else None
-                ),
-                "url": getattr(c, "html_url", None) or getattr(c, "url", None),
-            }
-            for c in pr.get_commits()
-        ]
+        commit_ls = []
+        for c in pr.get_commits():
+            commit_obj = getattr(c, "commit", None)
+            commit_message = commit_obj.get("message") if commit_obj else None
+            commit_ls.append(
+                {
+                    "sha": getattr(c, "sha", None),
+                    "message": commit_message,
+                    "url": getattr(c, "html_url", None) or getattr(c, "url", None),
+                }
+            )
 
         # PyGithub doesn't provide diff content directly. Request via REST
         # endpoint and accept diff media type when possible.
@@ -216,10 +218,12 @@ class GitHubClient:
         try:
             path = f"/repos/{owner}/{repo}/discussions/{number}"
             data = self.gh._requester.requestJsonAndCheck("GET", path)[2]
+            url = data.get("html_url") or (
+                f"https://github.com/{owner}/{repo}/discussions/{number}"
+            )
             return {
                 "type": "discussion",
-                "url": data.get("html_url")
-                or f"https://github.com/{owner}/{repo}/discussions/{number}",
+                "url": url,
                 "owner": owner,
                 "repo": repo,
                 "number": int(number),

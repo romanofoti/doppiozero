@@ -36,7 +36,8 @@ class End(Node):
         """Return the final report or the full shared state.
 
         Returns:
-            The structured final report if present under ``final_report``, otherwise the full shared state.
+            The structured final report if present under ``final_report``. Otherwise
+            returns the full shared state.
 
         """
         logger.info("End node: terminating workflow and returning results.")
