@@ -214,7 +214,9 @@ class FinalReportNode(Node):
     def call_llm(self, prompt, model):
         """Helper that performs the LLM call.
 
-        In the default implementation this is a stub that returns a placeholder Markdown string. Production implementations may proxy to a real LLM client.
+        In the default implementation this is a stub that returns a placeholder
+        Markdown string. Production implementations may proxy to a real LLM
+        client.
 
         Args:
             prompt : The prompt to send to the model.

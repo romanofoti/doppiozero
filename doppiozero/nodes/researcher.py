@@ -8,10 +8,9 @@ logger = get_logger(__name__)
 
 class InitialResearchNode(Node):
     """Node that performs the initial semantic research for a request.
-
-    This node starts the search process by creating an initial semantic
-    search plan using the user's request and then executes that plan to
-    collect initial candidate conversations.
+    This node starts the search process by creating an initial semantic search
+    plan using the user's request and then executes that plan to collect
+    initial candidate conversations.
 
     Parameters
     ----------

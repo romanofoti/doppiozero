@@ -1,13 +1,15 @@
 """content_service.py
 
 Provides two classes:
- - ContentFetcher: fetches GitHub conversations (issues/prs/discussions) and handles caching.
- - ContentManager: higher-level orchestration that searches and summarizes conversations using a ContentFetcher and an LLM client.
+ - ContentFetcher: fetches GitHub conversations (issues/prs/discussions)
+     and handles caching.
+ - ContentManager: higher-level orchestration that searches and summarizes
+     conversations using a ContentFetcher and an LLM client.
 
-The module exposes singletons `content_fetcher` and `content_manager` for convenience.
+The module exposes singletons `content_fetcher` and `content_manager` for
+convenience.
 """
 
-from typing import Optional, Dict, Any, Tuple, List
 import os
 import json
 import datetime
@@ -431,7 +433,10 @@ class ContentManager:
             logger.error(f"Indexing failed for {conversation_url}: {e}")
 
         logger.info(
-            f"Indexed summary for {conversation_url} in collection '{collection}' with topics: {topic_ls}"
+            "Indexed summary for %s in collection '%s' with topics: %s",
+            conversation_url,
+            collection,
+            topic_ls,
         )
         return vector_payload_dc
 

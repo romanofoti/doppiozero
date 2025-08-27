@@ -1,7 +1,6 @@
-"""Light adapter over PyGithub to provide simple normalized dicts for the rest of the
-codebase.
-
-This module centralizes GitHub API usage via PyGithub and returns simple dict
+"""
+Light adapter over PyGithub providing simple normalized dicts for the rest of
+the codebase. This module centralizes GitHub API usage and returns plain
 structures matching the shapes used elsewhere in the repository.
 """
 
@@ -159,11 +158,15 @@ class GitHubClient:
             for c in pr.get_commits()
         ]
 
-        # Diff: PyGithub doesn't provide diff content directly; request via API URL
+        # PyGithub doesn't provide diff content directly. Request via REST
+        # endpoint and accept diff media type when possible.
         diff = None
         try:
+            # Request the PR diff via the REST endpoint and accept diff media type
             diff = self.gh._requester.requestJsonAndCheck(
-                "GET", pr.url, headers={"Accept": "application/vnd.github.v3.diff"}
+                "GET",
+                pr.url,
+                headers={"Accept": "application/vnd.github.v3.diff"},
             )[2]
         except Exception:
             diff = None

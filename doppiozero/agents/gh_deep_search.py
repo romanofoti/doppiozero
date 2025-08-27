@@ -45,6 +45,7 @@ class GitHubAgent:
             None
 
         """
+        # cleaned accidental insertion; continue initialization
         self.request = request
         self.options = options or {}
         self.logger = logger
@@ -127,9 +128,9 @@ class GitHubAgent:
             The final flow result returned by the Flow orchestration.
 
         """
-        self.logger.info(
-            f"=== GITHUB CONVERSATIONS RESEARCH AGENT{' (parallel mode)' if self.shared['parallel'] else ''} ==="
-        )
+        # Avoid extremely long inline f-strings; build suffix separately
+        suffix = " (parallel mode)" if self.shared["parallel"] else ""
+        self.logger.info(f"=== GITHUB CONVERSATIONS RESEARCH AGENT{suffix} ===")
         self.logger.info(f"Request: {self.request}")
         self.logger.info(f"Collection: {self.options.get('collection')}")
         self.logger.info(f"Max results per search: {self.shared['top_k']}")

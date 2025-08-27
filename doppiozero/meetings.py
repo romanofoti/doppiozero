@@ -169,14 +169,15 @@ class Meetings:
 
             if write_links:
                 notes_path = os.path.join(target_dir, "meeting_notes.md")
-                link_text = f"- [[{exec_path}]]\n- [[{detail_path}]]\n"
+                # Keep link text lines short by building them separately
+                link_text = "- [[{}]]\n- [[{}]]\n".format(exec_path, detail_path)
                 parent = os.path.dirname(notes_path)
                 if parent:
                     ensure_dir(parent)
                 with open(notes_path, "a", encoding="utf-8") as notes_file:
                     notes_file.write(link_text)
 
-            logger.info(f"Processed {transcript_path}: summaries saved, notes updated.")
+            logger.info("Processed %s: summaries saved, notes updated.", transcript_path)
 
 
 # Module-level singleton for convenience

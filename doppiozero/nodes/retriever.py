@@ -63,16 +63,17 @@ class RetrieverNode(Node):
         """Post-process retrieved results and update shared memory.
 
         This method stores the execution results into the shared memory
-        structure, updates search query history, and advances the
-        depth counter for the flow.
+        structure, updates search query history, and advances the depth
+        counter for the flow.
 
         Args:
             shared : the shared state dictionary used across nodes.
-            prep_res : the preparation result returned by :meth:`prep` (search plans).
-            exec_res : the execution result returned by :meth:`exec` (retrieved hits).
+            prep_res : the preparation result returned by :meth:`prep`.
+            exec_res : the execution result returned by :meth:`exec`.
 
         Returns:
-            A control token for the flow: "continue" to keep iterating or "final" to stop when max depth is reached.
+            A control token for the flow: "continue" to keep iterating or
+            "final" to stop when max depth is reached.
 
         """
         shared["memory"]["hits"].extend(exec_res)

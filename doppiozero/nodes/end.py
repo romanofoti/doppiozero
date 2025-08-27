@@ -10,7 +10,6 @@ class End(Node):
     The End node captures the shared state during prep so that exec can
     return a structured final report (if present) or the full shared
     dictionary as a fallback.
-
     Parameters
     ----------
     None

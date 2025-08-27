@@ -13,7 +13,10 @@ from typing import Optional
 # Constants and parameters
 # **********************************
 
-FORMAT = "%(asctime)s - %(name)-10s - %(filename)-18s - %(funcName)-12s - %(levelname)-8s - %(message)s"  # noqa
+FORMAT = (
+    "%(asctime)s - %(name)-10s - %(filename)-18s - %(funcName)-12s - "
+    "%(levelname)-8s - %(message)s"
+)  # noqa
 
 logging.basicConfig(format=FORMAT, level=logging.INFO)
 
