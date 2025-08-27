@@ -5,8 +5,7 @@ GitHubDeepResearchAgent - Multi-Stage Research Pipeline for GitHub Conversations
 from ..pocketflow.pocketflow import Node, Flow
 from ..utils.utils import get_logger
 
-# Import nodes at module top-level. If circular imports appear, fix the
-# referencing module rather than delaying imports here.
+from ..contents import content_manager, content_fetcher
 from ..nodes import (
     InitialResearchNode,
     ClarifierNode,
@@ -20,10 +19,8 @@ from ..nodes import (
     End,
 )
 
-logger = get_logger(__name__)
 
-# Top-level pragmatic helper imports used by the convenience orchestration
-from ..contents import content_manager, content_fetcher
+logger = get_logger(__name__)
 
 
 class GitHubAgent:
