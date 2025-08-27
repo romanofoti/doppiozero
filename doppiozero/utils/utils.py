@@ -147,9 +147,6 @@ def ensure_dir(path):
     os.makedirs(path, exist_ok=True)
 
 
-# -------------------------------
-# Script/CLI helpers (migrated from scripts_common)
-# -------------------------------
 def read_urls_from_stdin_or_file(path: Optional[str]):
     """Return a list of URLs from a file path or stdin (if path is None).
 
