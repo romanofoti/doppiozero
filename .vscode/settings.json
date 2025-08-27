@@ -3,11 +3,5 @@
   "python.linting.flake8Enabled": true,
   "python.linting.flake8Args": ["--max-line-length=100"],
   "editor.rulers": [100],
-  "python.defaultInterpreterPath": "/Users/romanofoti/Library/Caches/pypoetry/virtualenvs/doppiozero-AQeo1sYh-py3.12/bin/python",
-  // Older extensions still read python.pythonPath; set it for compatibility
-  "python.pythonPath": "/Users/romanofoti/Library/Caches/pypoetry/virtualenvs/doppiozero-AQeo1sYh-py3.12/bin/python",
-  // Help VS Code discover virtual environments under common Poetry cache path
-  "python.venvPath": "/Users/romanofoti/Library/Caches/pypoetry/virtualenvs",
-  // Allow the extension to look for interpreters in derived environment folders
-  "python.analysis.useLibraryCodeForTypes": true
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python"
 }
