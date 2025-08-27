@@ -1,0 +1,7 @@
+{
+  "python.linting.enabled": true,
+  "python.linting.flake8Enabled": true,
+  "python.linting.flake8Args": ["--max-line-length=100"],
+  "editor.rulers": [100],
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python"
+}
