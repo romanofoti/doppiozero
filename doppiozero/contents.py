@@ -15,6 +15,7 @@ import json
 import datetime
 import urllib.parse
 from typing import Optional, Tuple, Dict, Any, List
+import re
 
 from .clients.github import GitHubClient
 from .clients.llm import llm_client
@@ -503,15 +504,44 @@ class ContentManager:
             else f"Executive summary for {conversation_url}: {exec_prompt[:60]}..."
         )
 
-        # Topics extraction (simple placeholder using prompt file if present)
+        # Topics extraction: prefer LLM-driven extraction using the provided prompt
+        base_topic_ls = ["performance", "authentication", "database", "caching", "bug-fix"]
+        topic_ls: List[str] = []
         try:
             with open(topics_prompt_path, "r", encoding="utf-8") as f:
-                _ = f.read()
+                topics_prompt = f.read()
+            # Inject the conversation into the prompt (truncate to avoid very long prompts)
+            filled = topics_prompt.replace(
+                "{{conversation}}", json.dumps(convo_dc, indent=2)[:8000]
+            )
+            raw_out = self.llm.generate(filled) if self.llm else ""
+
+            # Try parsing as JSON list first
+            parsed: List[str] = []
+            try:
+                candidate = json.loads(raw_out)
+                if isinstance(candidate, list):
+                    parsed = [str(x).strip() for x in candidate if x]
+                elif isinstance(candidate, dict):
+                    # common patterns: {"topics": [...]}
+                    candidate_list = candidate.get("topics") or candidate.get("items")
+                    if isinstance(candidate_list, list):
+                        parsed = [str(x).strip() for x in candidate_list if x]
+            except Exception:
+                # Fallback: split on newlines, commas, or semicolons
+                parsed = [p.strip() for p in re.split(r"[\n,;]+", raw_out) if p.strip()]
+
+            # Finalize topic list with optional trimming
+            if parsed:
+                if max_topics is not None:
+                    topic_ls = parsed[:max_topics]
+                else:
+                    topic_ls = parsed
+            else:
+                topic_ls = base_topic_ls[:max_topics] if max_topics is not None else base_topic_ls
         except Exception as e:
-            logger.error(f"Error reading topics prompt: {e}")
-            # proceed with default topic list
-        base_topic_ls = ["performance", "authentication", "database", "caching", "bug-fix"]
-        topic_ls = base_topic_ls[:max_topics] if max_topics is not None else base_topic_ls
+            logger.error(f"Error reading or processing topics prompt: {e}")
+            topic_ls = base_topic_ls[:max_topics] if max_topics is not None else base_topic_ls
 
         # Prepare payload/metadata
         vector_payload_dc = {
