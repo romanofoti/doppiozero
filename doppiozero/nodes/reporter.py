@@ -65,24 +65,24 @@ class FinalReportNode(Node):
         # Build a concise research summary in smaller parts to avoid
         # excessively long single lines and to satisfy line-length
         # linter rules.
-        summary_parts = [
+        summary_parts_ls = [
             f"Research summary: {num_hits} conversations analyzed{compaction_note},",
             f"{num_queries} queries used, {depth} deep research iterations",
         ]
-        summary_msg = " ".join(summary_parts)
+        summary_msg = " ".join(summary_parts_ls)
         self.logger.info(summary_msg)
 
         # Build a readable sources list
-        sources = []
+        sources_ls = []
         for i, hit in enumerate(shared.get("memory", {}).get("hits", [])):
             url = hit.get("url")
             score = hit.get("score")
-            sources.append(f"  {i + 1}. {url} (score: {score})")
-        sources_list = "\n".join(sources)
+            sources_ls.append(f"  {i + 1}. {url} (score: {score})")
+        sources_list = "\n".join(sources_ls)
         self.logger.debug("All conversation sources:\n%s", sources_list)
 
         # Build findings payload by iterating to avoid overly long one-liners
-        findings_parts = []
+        findings_parts_ls = []
         for hit in shared.get("memory", {}).get("hits", []):
             src = hit.get("url")
             summary = hit.get("summary")
@@ -94,9 +94,9 @@ class FinalReportNode(Node):
                 f"**Relevance Score**: {score}\n"
                 f"**Conversation Details**:\n{convo}"
             )
-            findings_parts.append(part)
+            findings_parts_ls.append(part)
 
-        all_findings = "\n\n---\n\n".join(findings_parts)
+        all_findings = "\n\n---\n\n".join(findings_parts_ls)
 
         prompt = self.FINAL_REPORT_PROMPT.replace("{{request}}", str(shared.get("request", "")))
         prompt = prompt.replace(

@@ -386,19 +386,19 @@ class ContentManager:
                         if not summary and isinstance(payload_dc, dict):
                             summary = payload_dc.get("summary") or ""
 
-                        conversation = {}
+                        conversation_dc = {}
                         if isinstance(payload_dc, dict):
-                            convo = (
+                            convo_dc = (
                                 payload_dc.get("conversation")
                                 or payload_dc.get("body")
                                 or payload_dc.get("content")
                             )
-                            if convo:
-                                conversation = convo
+                            if convo_dc:
+                                conversation_dc = convo_dc
                         # Optionally fetch full conversation from GitHub when not present
-                        if fetch_conversation and not conversation and url:
+                        if fetch_conversation and not conversation_dc and url:
                             try:
-                                conversation = self.fetcher.fetch_github_conversation(
+                                conversation_dc = self.fetcher.fetch_github_conversation(
                                     url, cache_path=cache_path
                                 )
                             except Exception as conv_err:
@@ -411,7 +411,7 @@ class ContentManager:
                                 "summary": summary,
                                 "score": score,
                                 "search_mode": "semantic",
-                                "conversation": conversation,
+                                "conversation": conversation_dc,
                             }
                         )
                     return result_ls
@@ -563,26 +563,26 @@ class ContentManager:
             raw_out = self.llm.generate(filled) if self.llm else ""
 
             # Try parsing as JSON list first
-            parsed: List[str] = []
+            parsed_ls: List[str] = []
             try:
                 candidate = json.loads(raw_out)
                 if isinstance(candidate, list):
-                    parsed = [str(x).strip() for x in candidate if x]
+                    parsed_ls = [str(x).strip() for x in candidate if x]
                 elif isinstance(candidate, dict):
                     # common patterns: {"topics": [...]}
                     candidate_list = candidate.get("topics") or candidate.get("items")
                     if isinstance(candidate_list, list):
-                        parsed = [str(x).strip() for x in candidate_list if x]
+                        parsed_ls = [str(x).strip() for x in candidate_list if x]
             except Exception:
                 # Fallback: split on newlines, commas, or semicolons
-                parsed = [p.strip() for p in re.split(r"[\n,;]+", raw_out) if p.strip()]
+                parsed_ls = [p.strip() for p in re.split(r"[\n,;]+", raw_out) if p.strip()]
 
             # Finalize topic list with optional trimming
-            if parsed:
+            if parsed_ls:
                 if max_topics is not None:
-                    topic_ls = parsed[:max_topics]
+                    topic_ls = parsed_ls[:max_topics]
                 else:
-                    topic_ls = parsed
+                    topic_ls = parsed_ls
             else:
                 topic_ls = base_topic_ls[:max_topics] if max_topics is not None else base_topic_ls
         except Exception as e:
