@@ -56,8 +56,8 @@ class RetrieverNode(Node):
             qdrant_url = plan.get("qdrant_url")
             top_k = int(plan.get("top_k", 5))
             try:
-                hits = content_manager.vector_search(query, collection, qdrant_url, top_k)
-                result_ls.extend(hits)
+                hit_ls = content_manager.vector_search(query, collection, qdrant_url, top_k)
+                result_ls.extend(hit_ls)
             except Exception as e:
                 logger.error("Error during vector_search for plan %s: %s", plan, e)
         return result_ls

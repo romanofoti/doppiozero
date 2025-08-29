@@ -12,12 +12,14 @@ def test_qdrant_smoke():
     # If Qdrant is not reachable, skip the integration test quickly
     try:
         # quick health check
-        hits = content_manager.vector_search("healthcheck", COLLECTION, qdrant_url=QDRANT, top_k=1)
+        hit_ls = content_manager.vector_search(
+            "healthcheck", COLLECTION, qdrant_url=QDRANT, top_k=1
+        )
     except Exception:
         pytest.skip("Qdrant not available at %s" % QDRANT)
 
     text = "Integration smoke document about caching and database connectivity."
-    metadata = {
+    metadata_dc = {
         "url": "https://example.com/integration/smoke/1",
         "title": "Integration Smoke",
         "executive_summary": "Integration smoke summary",
@@ -30,7 +32,7 @@ def test_qdrant_smoke():
             content_manager.vector_upsert(
                 text,
                 COLLECTION,
-                metadata,
+                metadata_dc,
                 qdrant_url=QDRANT,
                 vector_id_key="url",
             )
@@ -43,9 +45,11 @@ def test_qdrant_smoke():
     # Small delay
     time.sleep(0.5)
 
-    hits = content_manager.vector_search("database caching", COLLECTION, qdrant_url=QDRANT, top_k=5)
+    hit_ls = content_manager.vector_search(
+        "database caching", COLLECTION, qdrant_url=QDRANT, top_k=5
+    )
     assert any(
-        h.get("url") == metadata["url"] for h in hits
+        h.get("url") == metadata_dc["url"] for h in hit_ls
     ), "Upserted document not found in search results"
 
     # Best-effort cleanup: try to remove the test collection if the client supports it

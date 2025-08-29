@@ -288,8 +288,8 @@ class ContentManager:
 
         """
         client = GitHubClient(self.token)
-        results = client.search_issues(query, max_results=max_results)
-        return results[:max_results]
+        result_ls = client.search_issues(query, max_results=max_results)
+        return result_ls[:max_results]
 
     def vector_search(
         self,
@@ -307,7 +307,7 @@ class ContentManager:
 
         Returns a list of result dicts with keys: url, summary, score, search_mode, conversation
         """
-        results: List[Dict[str, Any]] = []
+        result_ls: List[Dict[str, Any]] = []
 
         # Build embedding for the query
         try:
@@ -338,28 +338,28 @@ class ContentManager:
                     # QueryResponse with a `points` list, others return an
                     # iterable of hits. Support ScoredPoint objects, plain dicts,
                     # and tuple/list shapes.
-                    points_iter = None
+                    point_ls = None
                     if hasattr(hits, "points"):
-                        points_iter = getattr(hits, "points")
+                        point_ls = getattr(hits, "points")
                     else:
-                        points_iter = hits
+                        point_ls = hits
 
-                    for hit in points_iter:
-                        payload = {}
+                    for hit in point_ls:
+                        payload_dc = {}
                         hit_id = None
                         score = 0.0
 
                         # ScoredPoint-like objects
                         if hasattr(hit, "payload") or hasattr(hit, "id"):
-                            payload = getattr(hit, "payload", None) or {}
+                            payload_dc = getattr(hit, "payload", None) or {}
                             hit_id = getattr(hit, "id", None)
                             score = getattr(hit, "score", None) or 0.0
 
                         # tuple/list shapes: try to find dict payload / numeric score / id
                         elif isinstance(hit, (tuple, list)):
                             for elem in hit:
-                                if isinstance(elem, dict) and not payload:
-                                    payload = elem
+                                if isinstance(elem, dict) and not payload_dc:
+                                    payload_dc = elem
                                 elif isinstance(elem, (float, int)) and score == 0.0:
                                     try:
                                         score = float(elem)
@@ -370,26 +370,28 @@ class ContentManager:
 
                         # dict directly
                         elif isinstance(hit, dict):
-                            payload = hit
+                            payload_dc = hit
 
-                        url = (payload.get("url") if isinstance(payload, dict) else None) or (
-                            payload.get("id") if isinstance(payload, dict) else None
+                        url = (payload_dc.get("url") if isinstance(payload_dc, dict) else None) or (
+                            payload_dc.get("id") if isinstance(payload_dc, dict) else None
                         )
                         if not url and hit_id is not None:
                             url = str(hit_id)
 
                         summary = (
-                            payload.get("executive_summary") if isinstance(payload, dict) else None
+                            payload_dc.get("executive_summary")
+                            if isinstance(payload_dc, dict)
+                            else None
                         )
-                        if not summary and isinstance(payload, dict):
-                            summary = payload.get("summary") or ""
+                        if not summary and isinstance(payload_dc, dict):
+                            summary = payload_dc.get("summary") or ""
 
                         conversation = {}
-                        if isinstance(payload, dict):
+                        if isinstance(payload_dc, dict):
                             convo = (
-                                payload.get("conversation")
-                                or payload.get("body")
-                                or payload.get("content")
+                                payload_dc.get("conversation")
+                                or payload_dc.get("body")
+                                or payload_dc.get("content")
                             )
                             if convo:
                                 conversation = convo
@@ -403,7 +405,7 @@ class ContentManager:
                                 logger.debug(
                                     "Failed to fetch conversation for %s: %s", url, conv_err
                                 )
-                        results.append(
+                        result_ls.append(
                             {
                                 "url": url,
                                 "summary": summary,
@@ -412,7 +414,7 @@ class ContentManager:
                                 "conversation": conversation,
                             }
                         )
-                    return results
+                    return result_ls
             except Exception as e:
                 logger.error("Qdrant search error: %s", e)
 
@@ -427,7 +429,7 @@ class ContentManager:
                         convo = self.fetcher.fetch_github_conversation(url, cache_path=cache_path)
                     except Exception as conv_err:
                         logger.debug("Failed to fetch conversation for %s: %s", url, conv_err)
-                results.append(
+                result_ls.append(
                     {
                         "url": url,
                         "summary": h.get("title") or h.get("body") or "",
@@ -439,7 +441,7 @@ class ContentManager:
         except Exception as e:
             logger.error("GitHub fallback search failed: %s", e)
 
-        return results
+        return result_ls
 
     def summarize(
         self,
