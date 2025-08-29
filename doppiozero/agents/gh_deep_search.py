@@ -50,7 +50,7 @@ class GitHubAgent:
 
         # Build models defaults (allow explicit model keys or top-level shortcuts)
         provided_models = self.options.get("models") or {}
-        models = {
+        model_dc = {
             **{
                 "fast": self.options.get("fast_model") or provided_models.get("fast") or "default",
                 "reasoning": self.options.get("reasoning_model")
@@ -74,7 +74,7 @@ class GitHubAgent:
             "verbose": self.options.get("verbose", False),
             "search_modes": self.options.get("search_modes", ["semantic", "keyword"]),
             "cache_path": self.options.get("cache_path"),
-            "models": models,
+            "models": model_dc,
             "script_dir": self.options.get("script_dir", "bin"),
             "parallel": self.options.get("parallel", False),
             "done": False,
@@ -174,7 +174,7 @@ def run_deep_search(request: str, options: dict):
     max_depth = options.get("max_depth", 2)
     cache_path = options.get("cache_path")
     prompt_path = options.get("executive_summary_prompt_path", "")
-    models = options.get("models", {})
+    model_dc = options.get("models", {})
 
     # Sanitize cache_path to avoid accidental editor/settings strings being used as filenames
     if isinstance(cache_path, str) and cache_path.strip().startswith(('"', "{", "[")):
@@ -229,7 +229,7 @@ def run_deep_search(request: str, options: dict):
             try:
                 if collection:
                     content_manager.vector_upsert(
-                        summary or url, collection, {"url": url}, model=models.get("embed")
+                        summary or url, collection, {"url": url}, model=model_dc.get("embed")
                     )
             except Exception as e:
                 logger.warning(f"Vector upsert failed for {url}: {e}")

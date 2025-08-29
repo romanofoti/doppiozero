@@ -55,8 +55,11 @@ class LLMClient:
         """
         url = self.api_base.rstrip("/") + path
         data = json.dumps(payload).encode("utf-8")
-        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
-        req = urllib.request.Request(url, data=data, headers=headers)
+        header_dc = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}",
+        }
+        req = urllib.request.Request(url, data=data, headers=header_dc)
         ctx = ssl.create_default_context()
         with urllib.request.urlopen(req, context=ctx) as resp:
             return json.loads(resp.read().decode("utf-8"))
