@@ -423,10 +423,12 @@ class ContentManager:
             gh_hits = self.search(query, max_results=top_k)
             for h in gh_hits:
                 url = h.get("url") or h.get("html_url") or h.get("id")
-                convo = {}
+                convo_dc = {}
                 if fetch_conversation and url:
                     try:
-                        convo = self.fetcher.fetch_github_conversation(url, cache_path=cache_path)
+                        convo_dc = self.fetcher.fetch_github_conversation(
+                            url, cache_path=cache_path
+                        )
                     except Exception as conv_err:
                         logger.debug("Failed to fetch conversation for %s: %s", url, conv_err)
                 result_ls.append(
@@ -435,7 +437,7 @@ class ContentManager:
                         "summary": h.get("title") or h.get("body") or "",
                         "score": float(h.get("score", 0.0)) if h.get("score") is not None else 0.0,
                         "search_mode": "keyword",
-                        "conversation": convo,
+                        "conversation": convo_dc,
                     }
                 )
         except Exception as e:
