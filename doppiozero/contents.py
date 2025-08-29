@@ -14,7 +14,7 @@ import os
 import json
 import datetime
 import urllib.parse
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any, List
 
 from .clients.github import GitHubClient
 from .clients.llm import llm_client
@@ -288,6 +288,84 @@ class ContentManager:
         client = GitHubClient(self.token)
         results = client.search_issues(query, max_results=max_results)
         return results[:max_results]
+
+    def vector_search(
+        self,
+        query: str,
+        collection: str,
+        qdrant_url: Optional[str] = None,
+        top_k: int = 5,
+        model: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Perform a semantic vector search against Qdrant (if available).
+
+        Falls back to GitHub issue search when Qdrant is not configured.
+
+        Returns a list of result dicts with keys: url, summary, score, search_mode, conversation
+        """
+        results: List[Dict[str, Any]] = []
+
+        # Build embedding for the query
+        try:
+            q_embedding = self.llm.embed(query, model=model)
+        except Exception:
+            q_embedding = self.llm.embed(query, model=model) if self.llm else [0.0]
+
+        qdrant_endpoint = qdrant_url or os.environ.get("QDRANT_URL")
+        if QdrantClient is not None and qdrant_endpoint:
+            try:
+                client = self._get_qdrant_client(qdrant_endpoint)
+                if client is not None:
+                    try:
+                        hits = client.search(
+                            collection_name=collection,
+                            query_vector=q_embedding,
+                            limit=top_k,
+                            with_payload=True,
+                        )
+                    except Exception:
+                        # Try a different param name for older/newer clients
+                        hits = client.search(
+                            collection_name=collection,
+                            query_vector=q_embedding,
+                            limit=top_k,
+                        )
+
+                    for hit in hits:
+                        payload = getattr(hit, "payload", None) or {}
+                        url = payload.get("url") or payload.get("id") or str(getattr(hit, "id", ""))
+                        score = getattr(hit, "score", None) or 0.0
+                        summary = payload.get("executive_summary") or payload.get("summary") or ""
+                        results.append(
+                            {
+                                "url": url,
+                                "summary": summary,
+                                "score": score,
+                                "search_mode": "semantic",
+                                "conversation": {},
+                            }
+                        )
+                    return results
+            except Exception as e:
+                logger.error("Qdrant search error: %s", e)
+
+        # Fallback: use GitHub search and map results
+        try:
+            gh_hits = self.search(query, max_results=top_k)
+            for h in gh_hits:
+                results.append(
+                    {
+                        "url": h.get("url") or h.get("html_url") or h.get("id"),
+                        "summary": h.get("title") or h.get("body") or "",
+                        "score": float(h.get("score", 0.0)) if h.get("score") is not None else 0.0,
+                        "search_mode": "keyword",
+                        "conversation": {},
+                    }
+                )
+        except Exception as e:
+            logger.error("GitHub fallback search failed: %s", e)
+
+        return results
 
     def summarize(
         self,

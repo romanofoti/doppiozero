@@ -1,5 +1,6 @@
 from ..pocketflow.pocketflow import Node
 from ..utils.utils import get_logger
+from ..contents import content_manager
 
 logger = get_logger(__name__)
 
@@ -48,15 +49,17 @@ class RetrieverNode(Node):
 
         """
         logger.info("Executing search operations and retrieving data...")
-        result_ls = [
-            {
-                "url": "https://github.com/example/conversation/2",
-                "summary": "Retrieved summary",
-                "score": 0.90,
-                "search_mode": "semantic",
-                "conversation": {},
-            }
-        ]
+        result_ls = []
+        for plan in search_plans:
+            query = plan.get("query") or plan.get("q")
+            collection = plan.get("collection") or plan.get("index") or "default"
+            qdrant_url = plan.get("qdrant_url")
+            top_k = int(plan.get("top_k", 5))
+            try:
+                hits = content_manager.vector_search(query, collection, qdrant_url, top_k)
+                result_ls.extend(hits)
+            except Exception as e:
+                logger.error("Error during vector_search for plan %s: %s", plan, e)
         return result_ls
 
     def post(self, shared, prep_res, exec_res):
