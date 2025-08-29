@@ -6,15 +6,15 @@ import time
 
 class BaseNode:
     def __init__(self):
-        self.param_dc, self.successor_dc = {}, {}
+        self.params, self.successors = {}, {}
 
-    def set_param_dc(self, param_dc):
-        self.param_dc = param_dc
+    def set_params(self, params):
+        self.params = params
 
     def next(self, node, action="default"):
-        if action in self.successor_dc:
+        if action in self.successors:
             warnings.warn(f"Overwriting successor for action '{action}'")
-        self.successor_dc[action] = node
+        self.successors[action] = node
         return node
 
     def prep(self, shared):
@@ -35,7 +35,7 @@ class BaseNode:
         return self.post(shared, p, e)
 
     def run(self, shared):
-        if self.successor_dc:
+        if self.successors:
             warnings.warn("Node won't run successors. Use Flow.")
         return self._run(shared)
 
@@ -90,15 +90,15 @@ class Flow(BaseNode):
         return start
 
     def get_next_node(self, curr, action):
-        nxt = curr.successor_dc.get(action or "default")
-        if not nxt and curr.successor_dc:
-            warnings.warn(f"Flow ends: '{action}' not found in {list(curr.successor_dc)}")
+        nxt = curr.successors.get(action or "default")
+        if not nxt and curr.successors:
+            warnings.warn(f"Flow ends: '{action}' not found in {list(curr.successors)}")
         return nxt
 
     def _orch(self, shared, params=None):
-        curr, p, last_action = copy.copy(self.start_node), (params or {**self.param_dc}), None
+        curr, p, last_action = copy.copy(self.start_node), (params or {**self.params}), None
         while curr:
-            curr.set_param_dc(p)
+            curr.set_params(p)
             last_action = curr._run(shared)
             curr = copy.copy(self.get_next_node(curr, last_action))
         return last_action
@@ -116,7 +116,7 @@ class BatchFlow(Flow):
     def _run(self, shared):
         pr = self.prep(shared) or []
         for bp in pr:
-            self._orch(shared, {**self.param_dc, **bp})
+            self._orch(shared, {**self.params, **bp})
         return self.post(shared, pr, None)
 
 
@@ -144,7 +144,7 @@ class AsyncNode(Node):
                     await asyncio.sleep(self.wait)
 
     async def run_async(self, shared):
-        if self.successor_dc:
+        if self.successors:
             warnings.warn("Node won't run successors. Use AsyncFlow.")
         return await self._run_async(shared)
 
@@ -169,9 +169,9 @@ class AsyncParallelBatchNode(AsyncNode, BatchNode):
 
 class AsyncFlow(Flow, AsyncNode):
     async def _orch_async(self, shared, params=None):
-        curr, p, last_action = copy.copy(self.start_node), (params or {**self.param_dc}), None
+        curr, p, last_action = copy.copy(self.start_node), (params or {**self.params}), None
         while curr:
-            curr.set_param_dc(p)
+            curr.set_params(p)
             last_action = (
                 await curr._run_async(shared) if isinstance(curr, AsyncNode) else curr._run(shared)
             )
@@ -191,12 +191,12 @@ class AsyncBatchFlow(AsyncFlow, BatchFlow):
     async def _run_async(self, shared):
         pr = await self.prep_async(shared) or []
         for bp in pr:
-            await self._orch_async(shared, {**self.param_dc, **bp})
+            await self._orch_async(shared, {**self.params, **bp})
         return await self.post_async(shared, pr, None)
 
 
 class AsyncParallelBatchFlow(AsyncFlow, BatchFlow):
     async def _run_async(self, shared):
         pr = await self.prep_async(shared) or []
-        await asyncio.gather(*(self._orch_async(shared, {**self.param_dc, **bp}) for bp in pr))
+        await asyncio.gather(*(self._orch_async(shared, {**self.params, **bp}) for bp in pr))
         return await self.post_async(shared, pr, None)
