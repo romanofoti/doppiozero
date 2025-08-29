@@ -8,12 +8,13 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "3.12.2"
 PyGithub = "2.7.0"
-qdrant-client = "^1.11.0"
+qdrant-client = "1.15.1"
 
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"
 pre-commit = "^4.2.0"
 flake8 = "^7.0.0"
+pytest = "^7.4.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -24,3 +25,6 @@ line-length = 100
 
 [tool.flake8]
 max-line-length = 100
+
+[tool.pytest.ini_options]
+markers = ["integration: mark integration tests to include/exclude in CI"]

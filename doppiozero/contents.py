@@ -23,6 +23,7 @@ from .utils.utils import get_logger, read_json_or_none, write_json_safe
 from .utils.utils import safe_filename_for_url
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct, VectorParams, Distance
+import uuid
 
 
 logger = get_logger(__name__)
@@ -320,27 +321,70 @@ class ContentManager:
                 client = self._get_qdrant_client(qdrant_endpoint)
                 if client is not None:
                     try:
-                        hits = client.search(
+                        # qdrant-client's query_points accepts a `query` parameter
+                        # that can be a vector or a richer query object. Use that
+                        # name which is compatible with the installed client.
+                        hits = client.query_points(
                             collection_name=collection,
-                            query_vector=q_embedding,
+                            query=q_embedding,
                             limit=top_k,
                             with_payload=True,
                         )
                     except Exception:
-                        # Try a different param name for older/newer clients
-                        hits = client.search(
-                            collection_name=collection,
-                            query_vector=q_embedding,
-                            limit=top_k,
-                        )
+                        # Bubble up so outer handler can log and fallback to GH search
+                        raise
 
-                    for hit in hits:
-                        payload = getattr(hit, "payload", None) or {}
-                        url = payload.get("url") or payload.get("id") or str(getattr(hit, "id", ""))
-                        score = getattr(hit, "score", None) or 0.0
-                        summary = payload.get("executive_summary") or payload.get("summary") or ""
+                    # Normalize response: some qdrant-client versions return a
+                    # QueryResponse with a `points` list, others return an
+                    # iterable of hits. Support ScoredPoint objects, plain dicts,
+                    # and tuple/list shapes.
+                    points_iter = None
+                    if hasattr(hits, "points"):
+                        points_iter = getattr(hits, "points")
+                    else:
+                        points_iter = hits
+
+                    for hit in points_iter:
+                        payload = {}
+                        hit_id = None
+                        score = 0.0
+
+                        # ScoredPoint-like objects
+                        if hasattr(hit, "payload") or hasattr(hit, "id"):
+                            payload = getattr(hit, "payload", None) or {}
+                            hit_id = getattr(hit, "id", None)
+                            score = getattr(hit, "score", None) or 0.0
+
+                        # tuple/list shapes: try to find dict payload / numeric score / id
+                        elif isinstance(hit, (tuple, list)):
+                            for elem in hit:
+                                if isinstance(elem, dict) and not payload:
+                                    payload = elem
+                                elif isinstance(elem, (float, int)) and score == 0.0:
+                                    try:
+                                        score = float(elem)
+                                    except Exception:
+                                        pass
+                                elif isinstance(elem, (str, int)) and hit_id is None:
+                                    hit_id = elem
+
+                        # dict directly
+                        elif isinstance(hit, dict):
+                            payload = hit
+
+                        url = (payload.get("url") if isinstance(payload, dict) else None) or (
+                            payload.get("id") if isinstance(payload, dict) else None
+                        )
+                        if not url and hit_id is not None:
+                            url = str(hit_id)
+
+                        summary = (
+                            payload.get("executive_summary") if isinstance(payload, dict) else None
+                        )
+                        if not summary and isinstance(payload, dict):
+                            summary = payload.get("summary") or ""
+
                         conversation = {}
-                        # Prefer full conversation if present in payload
                         if isinstance(payload, dict):
                             convo = (
                                 payload.get("conversation")
@@ -630,6 +674,37 @@ class ContentManager:
         else:
             vector_id = str(hash(text))
 
+        # Qdrant point IDs must be unsigned integers or UUIDs. If the
+        # chosen vector_id is neither, generate a UUID for the point id
+        # and preserve the original id in the payload under `_original_id`.
+        point_id = None
+        try:
+            # integer id (digits only)
+            if re.fullmatch(r"\d+", vector_id):
+                point_id = int(vector_id)
+            else:
+                # try parse as UUID and use its string form
+                try:
+                    point_id = str(uuid.UUID(vector_id))
+                except Exception:
+                    # fallback: create a new UUID string and keep the original
+                    # id in the payload so callers can still see it
+                    new_uuid = str(uuid.uuid4())
+                    metadata = dict(metadata) if metadata is not None else {}
+                    metadata["_original_id"] = vector_id
+                    point_id = new_uuid
+                    logger.debug(
+                        "Converted vector id '%s' to UUID %s for Qdrant",
+                        vector_id,
+                        new_uuid,
+                    )
+        except Exception:
+            # As a last resort, use a generated UUID string
+            fallback_uuid = str(uuid.uuid4())
+            metadata = dict(metadata) if metadata is not None else {}
+            metadata["_original_id"] = vector_id
+            point_id = fallback_uuid
+
         # Step 3: Prepare payload
         vector_payload_dc = {
             "id": vector_id,
@@ -651,8 +726,8 @@ class ContentManager:
             try:
                 client = self._get_qdrant_client(qdrant_endpoint)
                 if client is not None:
-                    # Build point
-                    point = PointStruct(id=vector_id, vector=embedding, payload=metadata)
+                    # Build point (use coerced point_id which is int or uuid.UUID)
+                    point = PointStruct(id=point_id, vector=embedding, payload=metadata)
                     try:
                         client.upsert(
                             collection_name=collection,
