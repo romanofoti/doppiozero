@@ -20,6 +20,9 @@ from .clients.github import GitHubClient
 from .clients.llm import llm_client
 from .utils.utils import get_logger, read_json_or_none, write_json_safe
 from .utils.utils import safe_filename_for_url
+from qdrant_client import QdrantClient
+from qdrant_client.models import PointStruct, VectorParams, Distance
+
 
 logger = get_logger(__name__)
 
@@ -504,12 +507,76 @@ class ContentManager:
             logger.info(f"Skipping upsert for {vector_id} (up-to-date by {skip_if_up_to_date})")
             return
 
-        # Step 5: Log the simulated upsert (real implementation should call a provider API)
+        # Step 5: If Qdrant is configured and client available, attempt real upsert
+        qdrant_endpoint = qdrant_url or os.environ.get("QDRANT_URL")
+        if QdrantClient is not None and qdrant_endpoint:
+            try:
+                client = self._get_qdrant_client(qdrant_endpoint)
+                if client is not None:
+                    # Build point
+                    point = PointStruct(id=vector_id, vector=embedding, payload=metadata)
+                    try:
+                        client.upsert(
+                            collection_name=collection,
+                            points=[point],
+                        )
+                        logger.info(
+                            "Upserted vector to Qdrant collection '%s' (id=%s)",
+                            collection,
+                            vector_id,
+                        )
+                        return
+                    except Exception as upserr:
+                        # Try creating the collection then retry
+                        logger.debug(
+                            "Qdrant upsert failed: %s; attempting to create collection", upserr
+                        )
+                        try:
+                            # Create collection with vector params inferred from embedding length
+                            client.recreate_collection(
+                                collection_name=collection,
+                                vectors_config=VectorParams(
+                                    size=len(embedding), distance=Distance.COSINE
+                                ),
+                            )
+                            client.upsert(
+                                collection_name=collection,
+                                points=[point],
+                            )
+                            logger.info(
+                                "Created collection and upserted vector to '%s' (id=%s)",
+                                collection,
+                                vector_id,
+                            )
+                            return
+                        except Exception as createrr:
+                            logger.error("Qdrant create/upsert failed: %s", createrr)
+            except Exception as e:
+                logger.error("Qdrant client error: %s", e)
+
+        # Fallback: log the simulated upsert (no vector DB configured or failed)
         logger.info(
-            "Upserted vector to collection '%s': %s...",
+            "[SIMULATED] Upserted vector to collection '%s': %s...",
             collection,
             json.dumps(vector_payload_dc)[:120],
         )
+
+    def _get_qdrant_client(self, qdrant_url: str):
+        """Return a QdrantClient connected to the given URL, or None on failure.
+
+        qdrant_url may be a full URL like http://localhost:6333. Returns None if
+        the qdrant-client package is not installed or connection fails.
+        """
+        if QdrantClient is None:  # pragma: no cover - optional dependency
+            logger.debug("qdrant-client not installed; skipping real upsert")
+            return None
+        try:
+            # QdrantClient supports a url= parameter in recent versions
+            client = QdrantClient(url=qdrant_url)
+            return client
+        except Exception as e:
+            logger.error("Failed to initialize Qdrant client for %s: %s", qdrant_url, e)
+            return None
 
 
 # Singletons
