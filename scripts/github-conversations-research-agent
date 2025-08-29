@@ -34,9 +34,9 @@ def main():
 
     clarifying_questions = [
         f"What aspect of '{args.request}' is most important?",
-        f"Are you interested in recent or historical conversations?",
-        f"Should we focus on issues, PRs, or discussions?",
-        f"Any specific repositories or authors to filter?",
+        "Are you interested in recent or historical conversations?",
+        "Should we focus on issues, PRs, or discussions?",
+        "Any specific repositories or authors to filter?",
     ]
 
     all_results = []
