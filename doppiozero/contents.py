@@ -296,6 +296,8 @@ class ContentManager:
         qdrant_url: Optional[str] = None,
         top_k: int = 5,
         model: Optional[str] = None,
+        fetch_conversation: bool = False,
+        cache_path: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Perform a semantic vector search against Qdrant (if available).
 
@@ -336,13 +338,33 @@ class ContentManager:
                         url = payload.get("url") or payload.get("id") or str(getattr(hit, "id", ""))
                         score = getattr(hit, "score", None) or 0.0
                         summary = payload.get("executive_summary") or payload.get("summary") or ""
+                        conversation = {}
+                        # Prefer full conversation if present in payload
+                        if isinstance(payload, dict):
+                            convo = (
+                                payload.get("conversation")
+                                or payload.get("body")
+                                or payload.get("content")
+                            )
+                            if convo:
+                                conversation = convo
+                        # Optionally fetch full conversation from GitHub when not present
+                        if fetch_conversation and not conversation and url:
+                            try:
+                                conversation = self.fetcher.fetch_github_conversation(
+                                    url, cache_path=cache_path
+                                )
+                            except Exception as conv_err:
+                                logger.debug(
+                                    "Failed to fetch conversation for %s: %s", url, conv_err
+                                )
                         results.append(
                             {
                                 "url": url,
                                 "summary": summary,
                                 "score": score,
                                 "search_mode": "semantic",
-                                "conversation": {},
+                                "conversation": conversation,
                             }
                         )
                     return results
@@ -353,13 +375,20 @@ class ContentManager:
         try:
             gh_hits = self.search(query, max_results=top_k)
             for h in gh_hits:
+                url = h.get("url") or h.get("html_url") or h.get("id")
+                convo = {}
+                if fetch_conversation and url:
+                    try:
+                        convo = self.fetcher.fetch_github_conversation(url, cache_path=cache_path)
+                    except Exception as conv_err:
+                        logger.debug("Failed to fetch conversation for %s: %s", url, conv_err)
                 results.append(
                     {
-                        "url": h.get("url") or h.get("html_url") or h.get("id"),
+                        "url": url,
                         "summary": h.get("title") or h.get("body") or "",
                         "score": float(h.get("score", 0.0)) if h.get("score") is not None else 0.0,
                         "search_mode": "keyword",
-                        "conversation": {},
+                        "conversation": convo,
                     }
                 )
         except Exception as e:
@@ -493,6 +522,7 @@ class ContentManager:
             "created_at": convo_dc.get("created_at"),
             "updated_at": convo_dc.get("updated_at"),
             "executive_summary": executive_summary,
+            "conversation": convo_dc,
             "topics": topic_ls,
             "collection": collection,
             "model": model,
@@ -610,21 +640,29 @@ class ContentManager:
                             "Qdrant upsert failed: %s; attempting to create collection", upserr
                         )
                         try:
-                            # Create collection with vector params inferred from embedding length
-                            client.recreate_collection(
-                                collection_name=collection,
-                                vectors_config=VectorParams(
-                                    size=len(embedding), distance=Distance.COSINE
-                                ),
-                            )
+                            # Non-destructive: create the collection only if it doesn't exist
+                            collection_exists = True
+                            try:
+                                # Prefer get_collection if available.
+                                client.get_collection(collection_name=collection)
+                            except Exception:
+                                # Older clients may not support it; assume missing.
+                                collection_exists = False
+
+                            if not collection_exists:
+                                client.create_collection(
+                                    collection_name=collection,
+                                    vectors_config=VectorParams(
+                                        size=len(embedding), distance=Distance.COSINE
+                                    ),
+                                )
+
                             client.upsert(
                                 collection_name=collection,
                                 points=[point],
                             )
                             logger.info(
-                                "Created collection and upserted vector to '%s' (id=%s)",
-                                collection,
-                                vector_id,
+                                "Upserted to collection '%s' (id=%s)", collection, vector_id
                             )
                             return
                         except Exception as createrr:
