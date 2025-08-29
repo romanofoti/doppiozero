@@ -2,23 +2,26 @@
 """CLI wrapper to fetch multiple GitHub conversations (reads URLs from file or stdin)."""
 import argparse
 import json
+from typing import List, Optional
+
 from doppiozero.utils.utils import read_urls_from_stdin_or_file
+from doppiozero.contents import content_fetcher
 
 
-def fetch_github_conversations(urls, cache_path=None, updated_at=None):
+def fetch_github_conversations(
+    urls: List[str], cache_path: Optional[str] = None, updated_at: Optional[str] = None
+):
     results = []
-    from urllib.error import URLError
 
     for url in urls:
         try:
-            # Delegate to the package fetch function (PyGithub adapter in fetch module)
-            from doppiozero.fetch_github_conversation import fetch_github_conversation
-
-            convo = fetch_github_conversation(url, cache_path=cache_path, updated_at=updated_at)
+            convo = content_fetcher.fetch_github_conversation(
+                url, cache_path=cache_path, updated_at=updated_at
+            )
             if convo:
                 results.append(convo)
-        except Exception as e:
-            print(f"Error fetching conversation for {url}: {e}")
+        except Exception as exc:  # pragma: no cover - simple CLI error reporting
+            print(f"Error fetching conversation for {url}: {exc}")
     return results
 
 

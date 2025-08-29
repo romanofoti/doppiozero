@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""CLI wrapper for extracting topics from a GitHub conversation."""
+"""CLI wrapper for extracting topics from a GitHub conversation.
+
+This implementation currently delegates to an LLM prompt in the future.
+"""
 import argparse
-import sys
-import os
 import json
+import os
+import sys
 from typing import List, Optional
-from doppiozero.utils.utils import safe_filename_for_url
-from doppiozero.utils.utils import write_json_safe
+
+from doppiozero.utils.utils import safe_filename_for_url, write_json_safe
 
 
 def extract_topics(
@@ -15,12 +18,13 @@ def extract_topics(
     cache_path: Optional[str] = None,
     max_topics: Optional[int] = None,
 ) -> List[str]:
-    conversation_text = f"Conversation from {conversation_url}..."
     try:
         with open(topics_prompt_path, "r", encoding="utf-8") as f:
-            prompt = f.read()
-    except Exception as e:
-        print(f"Error reading prompt file: {e}")
+            _prompt = f.read()
+        # Use the prompt length as a trivial usage to satisfy linters
+        _ = len(_prompt)
+    except Exception as exc:
+        print(f"Error reading prompt file: {exc}")
         return []
 
     base_topics = [

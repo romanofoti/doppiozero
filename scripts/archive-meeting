@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """CLI wrapper for archive-meeting."""
 import argparse
-
-import datetime
 from typing import Optional
+
 from doppiozero.meetings import meetings
 
 
@@ -14,7 +13,7 @@ def archive_meeting_cli(
     detailed_notes_prompt_path: str,
     transcript_files: Optional[list] = None,
 ) -> None:
-    archive_meeting(
+    meetings.archive_meeting(
         transcripts_dir=transcripts_dir,
         target_dir=target_dir,
         executive_summary_prompt_path=executive_summary_prompt_path,

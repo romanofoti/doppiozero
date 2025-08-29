@@ -6,8 +6,7 @@ This wrapper delegates to the library function in `doppiozero.fetch_github_conve
 import argparse
 import sys
 import json
-from pathlib import Path
-from doppiozero.fetch_github_conversation import fetch_github_conversation
+from doppiozero.contents import content_fetcher
 
 
 def main():
@@ -20,7 +19,7 @@ def main():
     args = parser.parse_args()
 
     try:
-        data = fetch_github_conversation(
+        data = content_fetcher.fetch_github_conversation(
             args.input, cache_path=args.cache_path, updated_at=args.updated_at
         )
         json.dump(data, sys.stdout, indent=2)
