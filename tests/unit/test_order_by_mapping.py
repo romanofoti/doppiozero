@@ -47,8 +47,8 @@ def test_order_by_mapping_uses_typed_order(monkeypatch):
     assert dummy_client.query_points.called, "query_points was not called"
 
     # Inspect the call kwargs
-    called_args, called_kwargs = dummy_client.query_points.call_args
-    order_by_passed = called_kwargs.get("order_by")
+    called_args, called_kwargs_dc = dummy_client.query_points.call_args
+    order_by_passed = called_kwargs_dc.get("order_by")
 
     # With our fake models, order_by should be an instance of FakeOrder
     assert isinstance(order_by_passed, FakeOrder), "Expected a typed Order instance"

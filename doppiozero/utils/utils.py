@@ -249,23 +249,23 @@ def build_qdrant_filters(filter_args):
         comp = _parse_comparison(v)
         if comp:
             op, rhs = comp
-            rng = {}
+            rng_dc = {}
             if op == ">":
-                rng["gt"] = rhs
+                rng_dc["gt"] = rhs
             elif op == ">=":
-                rng["gte"] = rhs
+                rng_dc["gte"] = rhs
             elif op == "<":
-                rng["lt"] = rhs
+                rng_dc["lt"] = rhs
             elif op == "<=":
-                rng["lte"] = rhs
-            must_ls.append({"key": k, "range": rng})
+                rng_dc["lte"] = rhs
+            must_ls.append({"key": k, "range": rng_dc})
             continue
 
         # Multi-value (OR) support
-        parts = _split_multi_values(v)
-        if len(parts) > 1:
+        parts_ls = _split_multi_values(v)
+        if len(parts_ls) > 1:
             # For array fields, each part is a membership check; otherwise match value
-            for p in parts:
+            for p in parts_ls:
                 if k in ARRAY_FIELDS:
                     should_ls.append({"key": k, "match": {"value": p}})
                 else:
