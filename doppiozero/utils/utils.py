@@ -8,6 +8,7 @@ import json
 import logging
 import sys
 from typing import Optional
+import re
 
 # **********************************
 # Constants and parameters
@@ -186,50 +187,153 @@ def safe_filename_for_url(url: str) -> str:
 ARRAY_FIELDS = ["labels", "topics", "participants"]
 
 
+def _split_multi_values(val: str):
+    """Split a filter value on commas or pipes into parts, trimming whitespace."""
+    return [p.strip() for p in re.split(r"[,|]+", val) if p.strip()]
+
+
+def _parse_comparison(val: str):
+    """Parse a comparison operator at the start of a value, returning (op, rhs) or None."""
+    m = re.match(r"^(>=|<=|>|<)\s*(.+)$", val)
+    if not m:
+        return None
+    op, rhs = m.groups()
+    return op, rhs.strip()
+
+
 def build_qdrant_filters(filter_args):
     """Build a Qdrant-friendly filter object from CLI filter args.
 
-    filter_args - dict or list of strings in key:value form
+    Supports input as a dict (key->value) or a list of 'key:value' strings.
 
-    Returns a dict representing a qdrant `filter` body. This is a
-    conservative port covering common cases: exact match on scalars,
-    membership checks for array fields, and created_after/created_before
-    as range checks on `created_at`.
+    Features:
+    - multi-value filters: 'topics:security,performance' -> should (OR)
+    - comparison operators: 'stars:>100', 'created_after:2025-01-01'
+    - array-field membership for fields in ARRAY_FIELDS
+
+    Returns a dict suitable for passing as the `filter` body to Qdrant's
+    search endpoint, or None when no filters are provided.
     """
     if not filter_args:
         return None
 
-    # Normalize into dict
+    # Normalize into a dict
     if isinstance(filter_args, list):
-        filter_dict = {}
+        filter_dc = {}
         for f in filter_args:
             if ":" in f:
                 k, v = f.split(":", 1)
-                filter_dict[k] = v
+                filter_dc[k] = v
     elif isinstance(filter_args, dict):
-        filter_dict = filter_args
+        filter_dc = filter_args
     else:
         return None
 
-    must = []
-    for k, v in filter_dict.items():
-        if k in ("created_after", "created_before"):
-            # Range condition on created_at
-            # qdrant expects format like: { key: "created_at", range: {gte/lt: ...}}
-            if k == "created_after":
-                must.append({"key": "created_at", "range": {"gte": v}})
-            else:
-                must.append({"key": "created_at", "range": {"lte": v}})
-        elif k in ARRAY_FIELDS:
-            # membership test for array fields
-            must.append({"key": k, "match": {"value": v}})
-        else:
-            # scalar equality / match
-            must.append({"key": k, "match": {"value": v}})
+    must_ls = []
+    should_ls = []
 
-    if not must:
+    for k, raw_v in filter_dc.items():
+        if raw_v is None:
+            continue
+        v = str(raw_v).strip()
+
+        # Special date range shorthand
+        if k == "created_after":
+            must_ls.append({"key": "created_at", "range": {"gte": v}})
+            continue
+        if k == "created_before":
+            must_ls.append({"key": "created_at", "range": {"lte": v}})
+            continue
+
+        # Comparison operators (numeric or lexical)
+        comp = _parse_comparison(v)
+        if comp:
+            op, rhs = comp
+            rng = {}
+            if op == ">":
+                rng["gt"] = rhs
+            elif op == ">=":
+                rng["gte"] = rhs
+            elif op == "<":
+                rng["lt"] = rhs
+            elif op == "<=":
+                rng["lte"] = rhs
+            must_ls.append({"key": k, "range": rng})
+            continue
+
+        # Multi-value (OR) support
+        parts = _split_multi_values(v)
+        if len(parts) > 1:
+            # For array fields, each part is a membership check; otherwise match value
+            for p in parts:
+                if k in ARRAY_FIELDS:
+                    should_ls.append({"key": k, "match": {"value": p}})
+                else:
+                    should_ls.append({"key": k, "match": {"value": p}})
+            continue
+
+        # Single value: for array fields this is a membership/match, else scalar match
+        if k in ARRAY_FIELDS:
+            must_ls.append({"key": k, "match": {"value": v}})
+        else:
+            must_ls.append({"key": k, "match": {"value": v}})
+
+    filter_dc = {}
+    if must_ls:
+        filter_dc["must"] = must_ls
+    if should_ls:
+        filter_dc["should"] = should_ls
+
+    if not filter_dc:
         return None
-    return {"must": must}
+
+    # Prefer to return qdrant-client typed model objects when available
+    try:
+        # Import model classes from the installed qdrant-client
+        from qdrant_client.models import Filter as QFilter
+        from qdrant_client.models import FieldCondition as QFieldCondition
+        from qdrant_client.models import MatchValue as QMatchValue
+        from qdrant_client.models import Range as QRange
+    except Exception:
+        # qdrant-client not available or different API: return plain dict
+        return filter_dc
+
+    def _to_field_condition(cond: dict):
+        """Convert a simple condition dict into a Qdrant FieldCondition model."""
+        key = cond.get("key")
+        if "match" in cond:
+            mv = cond["match"].get("value")
+            return QFieldCondition(key=key, match=QMatchValue(value=mv))
+        if "range" in cond:
+            rng = cond["range"]
+            # Pass through known keys
+            return QFieldCondition(
+                key=key,
+                range=QRange(
+                    gte=rng.get("gte"),
+                    lte=rng.get("lte"),
+                    gt=rng.get("gt"),
+                    lt=rng.get("lt"),
+                ),
+            )
+        # Unknown condition shape: return a FieldCondition with raw payload if possible
+        return QFieldCondition(key=key)
+
+    q_must_ls = [_to_field_condition(c) for c in filter_dc.get("must", [])]
+    q_should_ls = [_to_field_condition(c) for c in filter_dc.get("should", [])]
+
+    # Build the Qdrant Filter model
+    qfilter_kwargs = {}
+    if q_must_ls:
+        qfilter_kwargs["must"] = q_must_ls
+    if q_should_ls:
+        qfilter_kwargs["should"] = q_should_ls
+
+    try:
+        return QFilter(**qfilter_kwargs)
+    except Exception:
+        # If constructing the typed model fails, fall back to dict
+        return filter_dc
 
 
 def load_json_if_exists(path: Optional[str]):
