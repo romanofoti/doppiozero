@@ -7,17 +7,22 @@ logger = get_logger(__name__)
 class End(Node):
     """Terminal node that returns the flow results to the caller.
 
-    The End node captures the shared state during prep so that exec can
-    return a structured final report (if present) or the full shared
-    dictionary as a fallback.
     Parameters
     ----------
     None
 
     Attributes
     ----------
-    shared: dict
-        A reference to the shared flow state captured during prep.
+    shared : dict
+        A reference to the shared flow state captured during prep and returned
+        by :meth:`exec`.
+
+    Notes
+    -----
+    The End node is the terminal node for flows and simply returns the
+    structured final report when present, or the whole shared state as a
+    fallback.
+
     """
 
     def prep(self, shared):

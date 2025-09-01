@@ -8,16 +8,21 @@ logger = get_logger(__name__)
 class ParallelClaimVerifierNode(VerifierNode):
     """A verifier that runs claim checks in parallel.
 
-    Extends :class:`VerifierNode` and performs parallel verification of
-    claims. It follows the standard prep/exec lifecycle.
-
     Parameters
     ----------
     None
 
     Attributes
     ----------
+    logger : logging.Logger
+        Module-level logger obtained via :func:`doppiozero.utils.utils.get_logger`.
     Inherits attributes from :class:`VerifierNode`.
+
+    Notes
+    -----
+    This node mirrors :class:`VerifierNode` behavior but is intended to run
+    verification tasks concurrently where the environment supports it.
+
     """
 
     def prep(self, shared):

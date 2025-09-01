@@ -22,9 +22,22 @@ logger = get_logger(__name__)
 class Meetings:
     """Class-based interface for meeting archival and summarization.
 
-    Usage:
-        meetings = Meetings()
-        meetings.archive_meeting(...)
+    Parameters
+    ----------
+    llm : Optional[Any]
+        Optional LLM client instance used to generate summaries; falls back to
+        the module-level default client when omitted.
+
+    Attributes
+    ----------
+    llm : Any
+        The LLM client instance used by summarization helpers.
+
+    Notes
+    -----
+    This helper provides methods to find transcript files, summarize them using
+    LLM prompts, and archive generated notes to a target directory.
+
     """
 
     def __init__(self, llm=None):

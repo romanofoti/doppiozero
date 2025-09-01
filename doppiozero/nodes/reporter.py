@@ -4,6 +4,26 @@ from ..utils.utils import get_logger
 
 
 class FinalReportNode(Node):
+    """FinalReportNode that generates a comprehensive final Markdown report.
+
+    Parameters
+    ----------
+    logger : logging.Logger or None
+        Optional logger. If None, a default logger is created via
+        :func:`doppiozero.utils.utils.get_logger`.
+
+    Attributes
+    ----------
+    FINAL_REPORT_PROMPT : str
+        Template prompt used to generate the final report.
+    logger : logging.Logger
+        Logger instance used for node-level logging.
+    shared : dict or None
+        Shared flow state assigned during :meth:`prep` and used across
+        node stages.
+
+    """
+
     FINAL_REPORT_PROMPT = (
         "You are an expert analyst preparing a comprehensive report.\n"
         "## Original Request\n{{request}}\n"

@@ -7,16 +7,21 @@ logger = get_logger(__name__)
 class PlannerNode(Node):
     """Node responsible for creating search plans from a request.
 
-    The planner translates a user's request into one or more search queries
-    targeting different tools (semantic, keyword, etc.).
-
     Parameters
     ----------
     None
 
     Attributes
     ----------
+    logger : logging.Logger
+        Module-level logger obtained via :func:`doppiozero.utils.utils.get_logger`.
     Inherits attributes from :class:`pocketflow.pocketflow.Node`.
+
+    Notes
+    -----
+    The planner creates a set of search queries (semantic, keyword, etc.) and
+    writes the resulting plans into shared state under ``next_search_plans``.
+
     """
 
     def prep(self, shared):

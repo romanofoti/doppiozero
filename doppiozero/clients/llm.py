@@ -17,15 +17,23 @@ import ssl
 
 
 class LLMClient:
-    """Lightweight LLM client wrapper.
+    """
+    Lightweight LLM client wrapper providing text generation and embeddings.
 
-    Methods:
-    - generate(prompt, model=None): returns a string completion
-    - embed(text, model=None): returns a list[float]
+    Parameters
+    ----------
+    api_key : Optional[str]
+        API key for the OpenAI-compatible endpoint. Falls back to the
+        OPENAI_API_KEY environment variable when omitted.
+    api_base : Optional[str]
+        Base URL for the API. Falls back to OPENAI_API_BASE environment variable.
 
-    If OPENAI_API_KEY is present in the environment (or provided), the client
-    will call the OpenAI REST API. Otherwise it falls back to deterministic
-    local stubs so the code is testable without network access.
+    Attributes
+    ----------
+    api_key : Optional[str]
+        The API key used for requests.
+    api_base : str
+        The API base URL used for requests.
     """
 
     def __init__(self, api_key: Optional[str] = None, api_base: Optional[str] = None):

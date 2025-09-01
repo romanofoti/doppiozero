@@ -7,16 +7,21 @@ logger = get_logger(__name__)
 class ClarifierNode(Node):
     """Node that generates and processes clarifying questions.
 
-    This node asks follow-up questions to refine the user's request and
-    captures the user's clarifications into the shared state.
-
     Parameters
     ----------
     None
 
     Attributes
     ----------
+    logger : logging.Logger
+        Module-level logger obtained via :func:`doppiozero.utils.utils.get_logger`.
     Inherits attributes from :class:`pocketflow.pocketflow.Node`.
+
+    Notes
+    -----
+    This node generates clarifying questions and stores user-provided
+    clarifications in the shared state under the ``clarifications`` key.
+
     """
 
     def prep(self, shared):

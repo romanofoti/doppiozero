@@ -14,7 +14,16 @@ class RetrieverNode(Node):
 
     Attributes
     ----------
+    logger : logging.Logger
+        Module-level logger obtained via :func:`doppiozero.utils.utils.get_logger`.
     Inherits attributes from :class:`pocketflow.pocketflow.Node`.
+
+    Notes
+    -----
+    The RetrieverNode executes search plans using
+    :func:`doppiozero.contents.content_manager.vector_search` and stores
+    results into shared memory under ``memory``.
+
     """
 
     def prep(self, shared):

@@ -6,9 +6,6 @@ logger = get_logger(__name__)
 
 class InitialResearchNode(Node):
     """Node that performs the initial semantic research for a request.
-    This node starts the search process by creating an initial semantic search
-    plan using the user's request and then executes that plan to collect
-    initial candidate conversations.
 
     Parameters
     ----------
@@ -16,7 +13,15 @@ class InitialResearchNode(Node):
 
     Attributes
     ----------
+    logger : logging.Logger
+        Module-level logger obtained via :func:`doppiozero.utils.utils.get_logger`.
     Inherits attributes from :class:`pocketflow.pocketflow.Node`.
+
+    Notes
+    -----
+    This node seeds shared memory with initial ``hits``, ``notes``, and
+    ``search_queries`` derived from the user's request.
+
     """
 
     def prep(self, shared):

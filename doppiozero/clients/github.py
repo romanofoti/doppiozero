@@ -11,11 +11,19 @@ from github import Github
 
 
 class GitHubClient:
-    """Light adapter over PyGithub. Instantiate with optional token.
+    """
+    Light adapter over PyGithub providing normalized dictionaries for issues, PRs and discussions.
 
-    Example:
-        client = GitHubClient(token)
-        issue = client.fetch_issue(owner, repo, number)
+    Parameters
+    ----------
+    token : Optional[str]
+        Optional GitHub API token. Falls back to the GITHUB_TOKEN environment
+        variable when not provided.
+
+    Attributes
+    ----------
+    gh : github.Github
+        The underlying PyGithub client instance.
     """
 
     def __init__(self, token: Optional[str] = None):

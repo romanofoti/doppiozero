@@ -9,17 +9,21 @@ logger = get_logger(__name__)
 class ParallelRetrieverNode(RetrieverNode):
     """A retriever node that performs parallel or batched retrieval.
 
-    This node extends :class:`RetrieverNode` and is intended to run
-    retrievals in parallel or in a batched fashion. It follows the same
-    prep/exec/post lifecycle as RetrieverNode.
-
     Parameters
     ----------
     None
 
     Attributes
     ----------
+    logger : logging.Logger
+        Module-level logger obtained via :func:`doppiozero.utils.utils.get_logger`.
     Inherits attributes from :class:`RetrieverNode`.
+
+    Notes
+    -----
+    This node accepts ``next_search_plans`` in shared state and executes
+    each plan using :func:`doppiozero.contents.content_manager.vector_search`.
+
     """
 
     def prep(self, shared):

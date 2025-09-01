@@ -7,17 +7,21 @@ logger = get_logger(__name__)
 class ContextCompacterNode(Node):
     """Node that compacts conversation/context to satisfy LLM limits.
 
-    This node is responsible for reducing or summarizing the current
-    memory/context so it fits within token or size constraints for LLM
-    calls. It updates the shared memory with the compacted context.
-
     Parameters
     ----------
     None
 
     Attributes
     ----------
+    logger : logging.Logger
+        Module-level logger obtained via :func:`doppiozero.utils.utils.get_logger`.
     Inherits attributes from :class:`pocketflow.pocketflow.Node`.
+
+    Notes
+    -----
+    The node stores the compacted context back into shared state and
+    increments ``compaction_attempts`` to allow the flow to track retries.
+
     """
 
     def prep(self, shared):

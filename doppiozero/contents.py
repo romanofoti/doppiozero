@@ -38,7 +38,19 @@ logger = get_logger(__name__)
 
 
 class ContentFetcher:
-    """Fetch and cache GitHub conversation content."""
+    """
+    Fetch and cache GitHub conversation content.
+
+    Parameters
+    ----------
+    token : Optional[str]
+        Optional GitHub API token; when omitted the GITHUB_TOKEN environment variable is used.
+
+    Attributes
+    ----------
+    token : Optional[str]
+        The GitHub API token.
+    """
 
     def __init__(self, token: Optional[str] = None):
         """Initialize the ContentFetcher with an optional GitHub token.
@@ -262,7 +274,27 @@ class ContentFetcher:
 
 
 class ContentManager:
-    """High-level manager that searches and summarizes GitHub conversations."""
+    """
+    High-level manager that searches and summarizes GitHub conversations.
+
+    Parameters
+    ----------
+    token : Optional[str]
+        Optional GitHub API token used when fetching conversations.
+    llm : Optional[Any]
+        Optional LLM client instance; defaults to module-level `llm_client` when omitted.
+    fetcher : Optional[ContentFetcher]
+        Optional ContentFetcher instance; a default is created when omitted.
+
+    Attributes
+    ----------
+    token : Optional[str]
+        The GitHub API token.
+    llm : Any
+        The LLM client used for embeddings and text generation.
+    fetcher : ContentFetcher
+        The ContentFetcher instance used to fetch GitHub conversations.
+    """
 
     def __init__(
         self, token: Optional[str] = None, llm=None, fetcher: Optional[ContentFetcher] = None

@@ -26,9 +26,32 @@ logger = get_logger(__name__)
 class GitHubAgent:
     """Encapsulates the GitHub Conversations Research Agent.
 
-    This mirrors the Ruby `GitHubDeepResearchAgent` by holding configuration
-    and exposing methods to run the node-based Flow or a pragmatic
-    `run_deep_search` orchestration.
+    Parameters
+    ----------
+    request : str
+        The user's natural-language research request.
+    options : dict
+        Optional configuration mapping (collection, models, cache paths, etc.).
+
+    Attributes
+    ----------
+    request : str
+        The original request passed to the agent.
+    options : dict
+        The resolved options mapping used to configure the agent.
+    logger : logging.Logger
+        Module-level logger exposed on the instance for tests and debugging.
+    shared : dict
+        Runtime shared state passed through the Flow nodes.
+    flow : Flow
+        The constructed node-based Flow used to execute the multi-stage research.
+
+    Notes
+    -----
+    This agent builds a node graph using the PocketFlow primitives and
+    orchestrates semantic searches, clarifications, compaction and final
+    report generation.
+
     """
 
     def __init__(self, request: str, options: dict):

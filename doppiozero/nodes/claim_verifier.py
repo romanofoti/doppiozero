@@ -7,8 +7,20 @@ logger = get_logger(__name__)
 class VerifierNode(Node):
     """Node that verifies claims against available evidence.
 
-    The verifier inspects a list of claims and determines whether each is
-    supported by the evidence found during retrieval phases.
+    Parameters
+    ----------
+    None
+
+    Attributes
+    ----------
+    logger : logging.Logger
+        Module-level logger obtained via :func:`doppiozero.utils.utils.get_logger`.
+    Inherits attributes from :class:`pocketflow.pocketflow.Node`.
+
+    Notes
+    -----
+    This node prepares a list of claims, verifies them (synchronously), and
+    records verification results into the shared flow state.
 
     """
 
