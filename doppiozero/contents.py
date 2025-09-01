@@ -20,7 +20,7 @@ import re
 from .clients.github import GitHubClient
 from .clients.llm import llm_client
 from .utils.utils import get_logger, read_json_or_none, write_json_safe
-from .utils.utils import safe_filename_for_url, build_qdrant_filters
+from .utils.utils import safe_filename_for_url, build_qdrant_filters, deterministic_uuid5
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct, VectorParams, Distance
 import uuid
@@ -775,7 +775,15 @@ class ContentManager:
 
         # Step 2: Deterministic vector id generation
         if vector_id_key and vector_id_key in metadata:
-            vector_id = str(metadata[vector_id_key])
+            # Use a stable UUID5 derived from the metadata value and collection
+            raw_id = str(metadata[vector_id_key])
+            # If raw_id is numeric, keep as numeric string (handled later)
+            # Generate a deterministic UUID5 using collection as namespace so
+            # identical URLs across collections are stable per-collection.
+            try:
+                vector_id = deterministic_uuid5(raw_id, namespace=collection)
+            except Exception:
+                vector_id = str(raw_id)
         else:
             vector_id = str(hash(text))
 

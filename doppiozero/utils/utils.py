@@ -9,6 +9,7 @@ import logging
 import sys
 from typing import Optional
 import re
+import uuid
 
 # **********************************
 # Constants and parameters
@@ -334,6 +335,27 @@ def build_qdrant_filters(filter_args):
     except Exception:
         # If constructing the typed model fails, fall back to dict
         return filter_dc
+
+
+def deterministic_uuid5(name: str, namespace: Optional[str] = None) -> str:
+    """Return a deterministic UUID5 string for the given name.
+
+    If `namespace` is provided it is first converted into a UUID using
+    the URL namespace; otherwise the standard `uuid.NAMESPACE_URL` is used.
+
+    This helper is useful for producing stable UUIDs from external ids
+    (URLs, slugs, etc.) so that repeated upserts use the same point id.
+    """
+    try:
+        if namespace:
+            # derive a namespace UUID from the provided namespace string
+            namespace_uuid = uuid.uuid5(uuid.NAMESPACE_URL, str(namespace))
+        else:
+            namespace_uuid = uuid.NAMESPACE_URL
+        return str(uuid.uuid5(namespace_uuid, str(name)))
+    except Exception:
+        # Fallback: return a random uuid4 string if uuid5 construction fails
+        return str(uuid.uuid4())
 
 
 def load_json_if_exists(path: Optional[str]):
