@@ -1,5 +1,8 @@
 from ..pocketflow.pocketflow import Node
 from ..utils.utils import get_logger
+from ..clients.llm import llm_client
+from ..contents import content_manager
+import os
 
 logger = get_logger(__name__)
 
@@ -48,7 +51,54 @@ class ContextCompacterNode(Node):
 
         """
         logger.info("Compacting context for LLM constraints...")
-        return context
+
+        hits = context.get("hits", []) if isinstance(context, dict) else []
+        # Configurable parameters
+        max_hits = int(self.params.get("max_hits", 10))
+        prompt_path = os.path.join(
+            os.getcwd(), "prompts", "summarize", "github-conversation-executive-summary.md"
+        )
+
+        compacted = {**context}
+        compacted_hits = []
+
+        if not hits:
+            return compacted
+
+        if llm_client and os.path.exists(prompt_path):
+            # Use content_manager.summarize to create a short executive summary
+            for h in hits[:max_hits]:
+                url = h.get("url")
+                try:
+                    summary = content_manager.summarize(url, prompt_path)
+                except Exception as e:
+                    logger.debug("Summarization failed for %s: %s", url, e)
+                    summary = h.get("summary") or ""
+                new_h = {**h}
+                new_h["summary"] = summary
+                compacted_hits.append(new_h)
+        else:
+            # No LLM available: fallback to score-based truncation
+            try:
+                sorted_hits = sorted(hits, key=lambda x: float(x.get("score", 0.0)), reverse=True)
+            except Exception:
+                sorted_hits = hits
+            compacted_hits = sorted_hits[:max_hits]
+
+        omitted = max(0, len(hits) - len(compacted_hits))
+        compacted["hits"] = compacted_hits
+        if omitted:
+            compacted["omitted_count"] = omitted
+            logger.info(
+                "Compacted hits from %d to %d (omitted=%d)",
+                len(hits),
+                len(compacted_hits),
+                omitted,
+            )
+        else:
+            logger.info("Compaction produced %d hits", len(compacted_hits))
+
+        return compacted
 
     def post(self, shared, prep_res, exec_res):
         """Store the compacted context back to shared memory and increment attempt counter.
