@@ -322,34 +322,60 @@ class ContentManager:
 
         # Build embedding for the query
         try:
-            q_embedding = self.llm.embed(query, model=model)
+            q_embedding_ls = self.llm.embed(query, model=model)
         except Exception:
-            q_embedding = self.llm.embed(query, model=model) if self.llm else [0.0]
+            q_embedding_ls = self.llm.embed(query, model=model) if self.llm else [0.0]
 
         qdrant_endpoint = qdrant_url or os.environ.get("QDRANT_URL")
         # Translate CLI filters into a Qdrant-friendly filter object
         filter_obj = build_qdrant_filters(filters)
 
-        # Parse order_by like "created_at desc" and map to typed Qdrant Order when possible
+        # Parse order_by values. Support:
+        # - single string: "created_at desc"
+        # - multiple comma-separated: "created_at asc, updated_at desc"
+        # - synonyms: desc/descending, asc/ascending
+        # Map into typed QOrder objects when qdrant-client models are available,
+        # otherwise fall back to dicts.
         order_by_obj = None
-        if order_by and isinstance(order_by, str) and " " in order_by:
-            parts = order_by.split(" ", 1)
-            key = parts[0]
-            direction = parts[1].lower()
-            # Default to ascending/descending mapping
-            if QOrder is not None and QOrderType is not None:
-                # Map direction to OrderType enum if available
-                try:
-                    if direction.startswith("desc"):
-                        order_type = QOrderType.DESCENDING
-                    else:
-                        order_type = QOrderType.ASCENDING
-                    order_by_obj = QOrder(key=key, order=order_type)
-                except Exception:
-                    # Fallback to simple dict shape
-                    order_by_obj = {"key": key, "direction": direction}
-            else:
-                order_by_obj = {"key": key, "direction": direction}
+        order_parts_ls = []
+        if order_by:
+            if isinstance(order_by, str):
+                order_parts_ls = [p.strip() for p in order_by.split(",") if p.strip()]
+            elif isinstance(order_by, (list, tuple)):
+                order_parts_ls = [str(p).strip() for p in order_by if p]
+
+        if order_parts_ls:
+            q_orders_ls = []
+            fallback_orders_ls = []
+            for part in order_parts_ls:
+                tokens_ls = part.split()
+                key = tokens_ls[0]
+                direction = tokens_ls[1].lower() if len(tokens_ls) > 1 else "asc"
+                # Normalize common synonyms
+                if direction.startswith("desc"):
+                    dir_norm = "desc"
+                else:
+                    dir_norm = "asc"
+
+                if QOrder is not None and QOrderType is not None:
+                    try:
+                        if dir_norm == "desc":
+                            order_type = QOrderType.DESCENDING
+                        else:
+                            order_type = QOrderType.ASCENDING
+                        q_orders_ls.append(QOrder(key=key, order=order_type))
+                    except Exception:
+                        fallback_orders_ls.append({"key": key, "direction": dir_norm})
+                else:
+                    fallback_orders_ls.append({"key": key, "direction": dir_norm})
+
+            if q_orders_ls:
+                # If multiple QOrder objects, pass list; otherwise single object
+                order_by_obj = q_orders_ls if len(q_orders_ls) > 1 else q_orders_ls[0]
+            elif fallback_orders_ls:
+                order_by_obj = (
+                    fallback_orders_ls if len(fallback_orders_ls) > 1 else fallback_orders_ls[0]
+                )
 
         if QdrantClient is not None and qdrant_endpoint:
             try:
@@ -359,20 +385,20 @@ class ContentManager:
                         # qdrant-client's query_points accepts a `query` parameter
                         # that can be a vector or a richer query object. Include
                         # optional filter/order_by/score_threshold when provided.
-                        query_kwargs = {
+                        query_kwargs_dc = {
                             "collection_name": collection,
-                            "query": q_embedding,
+                            "query": q_embedding_ls,
                             "limit": top_k,
                             "with_payload": True,
                         }
                         if filter_obj is not None:
-                            query_kwargs["filter"] = filter_obj
+                            query_kwargs_dc["filter"] = filter_obj
                         if order_by_obj is not None:
-                            query_kwargs["order_by"] = order_by_obj
+                            query_kwargs_dc["order_by"] = order_by_obj
                         if score_threshold is not None:
-                            query_kwargs["score_threshold"] = float(score_threshold)
+                            query_kwargs_dc["score_threshold"] = float(score_threshold)
 
-                        hits = client.query_points(**query_kwargs)
+                        hits = client.query_points(**query_kwargs_dc)
                     except Exception:
                         # Bubble up so outer handler can log and fallback to GH search
                         raise
