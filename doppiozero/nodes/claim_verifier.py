@@ -38,7 +38,8 @@ class VerifierNode(Node):
 
         """
         logger.info("=== CLAIM VERIFICATION PHASE ===")
-        # Try to extract claims from a draft report if available
+        # Try to extract claims from a draft report if available.
+        # Use a configurable prompt or default extraction via the LLM.
         draft = shared.get("draft_answer") or shared.get("final_report", {}).get("draft")
         if draft and llm_client:
             try:
@@ -74,54 +75,95 @@ class VerifierNode(Node):
         """
         logger.info("Verifying %d claims against evidence...", len(claims))
         results: List[Dict] = []
+
+        # Configuration
+        top_k = int(self.params.get("top_k", 5))
+        collection = self.params.get("collection", "default")
+        max_evidence = int(self.params.get("max_evidence", 5))
+
         for claim in claims:
             # Retrieve candidate evidence via semantic search
             try:
-                hits = content_manager.vector_search(claim, collection="default", top_k=5)
+                hits = content_manager.vector_search(claim, collection=collection, top_k=top_k)
             except Exception as e:
                 logger.debug("Vector search failed for claim '%s': %s", claim, e)
                 hits = []
 
             # Build evidence list with snippets and sources
             evidence = []
-            for h in hits[:5]:
-                snippet = h.get("summary") or (str(h.get("conversation", {}))[:400])
+            for h in (hits or [])[:max_evidence]:
+                snippet = h.get("summary") or str(h.get("conversation", {}))[:400]
                 evidence.append(
                     {"source": h.get("url"), "snippet": snippet, "score": h.get("score")}
                 )
 
-            # Ask LLM to classify the claim given evidence
+            # Default classification
             status = "insufficient"
             reasoning = ""
+
+            # Structured LLM classification: expect JSON with {status, reasoning}
             if llm_client:
                 try:
                     ev_text = "\n\n".join(
                         [f"Source: {e['source']}\nSnippet: {e['snippet']}" for e in evidence]
                     )
                     classify_prompt = (
-                        f"Given the claim:\n{claim}\n\nAnd the following evidence:\n{ev_text}\n\n"
-                        'Answer with a JSON object {"status": <supported|contradicted|'
-                        'insufficient>, "reasoning": <string>} explaining whether the '
-                        "evidence supports the claim."
+                        f"You are an assistant that judges whether an evidence set supports "
+                        f"a factual claim.\nClaim:\n{claim}\n\nEvidence:\n{ev_text}\n\n"
+                        'Respond only with a JSON object like {"status": "supported"|'
+                        '"contradicted"|"insufficient", "reasoning": "..."}.'
                     )
                     raw = llm_client.generate(classify_prompt)
                     import json
 
-                    parsed = json.loads(raw)
-                    status = parsed.get("status", "insufficient")
-                    reasoning = parsed.get("reasoning", "")
+                    # Try to parse the model output; tolerate surrounding text by
+                    # finding the first JSON substring.
+                    parsed = None
+                    try:
+                        parsed = json.loads(raw)
+                    except Exception:
+                        # Attempt to extract JSON object substring
+                        import re
+
+                        m = re.search(r"\{.*\}", raw, re.S)
+                        if m:
+                            try:
+                                parsed = json.loads(m.group(0))
+                            except Exception:
+                                parsed = None
+
+                    if parsed and isinstance(parsed, dict):
+                        status = parsed.get("status", status)
+                        reasoning = parsed.get("reasoning", reasoning)
                 except Exception as e:
                     logger.debug("LLM classification failed for claim '%s': %s", claim, e)
-                    # Default heuristic: supported if any high-score evidence
-                    if any((e.get("score") or 0) > 0.75 for e in evidence):
-                        status = "supported"
-                        reasoning = "High-scoring matching evidence found."
+
+            # Heuristic fallback when LLM is unavailable or fails
+            if status == "insufficient":
+                if any((e.get("score") or 0) > 0.75 for e in evidence):
+                    status = "supported"
+                    reasoning = "High-scoring matching evidence found."
 
             results.append(
                 {"claim": claim, "status": status, "evidence": evidence, "reasoning": reasoning}
             )
 
         return results
+
+    def exec_fallback(self, prep_res, exc):
+        """Fallback used when exec raises: mark claims as inconclusive."""
+        logger.error("Verifier exec failed: %s", exc)
+        out = []
+        for c in prep_res or []:
+            out.append(
+                {
+                    "claim": c,
+                    "status": "insufficient",
+                    "evidence": [],
+                    "reasoning": "verifier_error",
+                }
+            )
+        return out
 
     def post(self, shared, prep_res, exec_res):
         """Record verification summary into shared state and return next action.
