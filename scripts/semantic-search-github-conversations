@@ -2,46 +2,10 @@
 """CLI wrapper for semantic-search-github-conversations."""
 import argparse
 import json
-import random
+import sys
+from typing import Dict, Any
 
-
-def semantic_search_github_conversations(
-    query: str,
-    collection: None = None,
-    filters: None = None,
-    limit: int = 10,
-    score_threshold: None = None,
-    order_by: None = None,
-    url: None = None,
-    output_format: str = "yaml",
-    verbose: bool = False,
-):
-    results = []
-    for i in range(1, limit + 1):
-        score = round(random.uniform(0.6, 1.0), 2)
-        if score_threshold and score < score_threshold:
-            continue
-        result = {
-            "id": f"qdrant_{i}",
-            "score": score,
-            "payload": {
-                "url": f"https://github.com/octocat/Hello-World/issues/{200+i}",
-                "title": f"Issue {200+i} about '{query}'",
-                "topics": ["performance", "security"],
-                "collection": collection or "summaries",
-            },
-        }
-        if filters:
-            match = True
-            for k, v in filters.items():
-                if k in result["payload"] and v not in str(result["payload"][k]):
-                    match = False
-            if not match:
-                continue
-        results.append(result)
-    if verbose:
-        print(f"Semantic search results: {results}")
-    return results
+from doppiozero.contents import content_manager
 
 
 def main():
@@ -49,7 +13,10 @@ def main():
     parser.add_argument("query", help="Free-text query")
     parser.add_argument("--collection", default=None)
     parser.add_argument(
-        "--filters", action="append", default=[], help="Filter key:value (repeatable)"
+        "--filters",
+        action="append",
+        default=[],
+        help="Filter key:value (repeatable)",
     )
     parser.add_argument("--limit", type=int, default=10)
     parser.add_argument("--score-threshold", type=float, default=None)
@@ -60,28 +27,48 @@ def main():
     args = parser.parse_args()
 
     # Build filter dict from key:value pairs
-    filters = {}
+    filters: Dict[str, str] = {}
     for f in args.filters:
         if ":" in f:
             k, v = f.split(":", 1)
             filters[k] = v
 
-    results = semantic_search_github_conversations(
-        args.query,
-        collection=args.collection,
-        filters=filters or None,
-        limit=args.limit,
-        score_threshold=args.score_threshold,
-        order_by=args.order_by,
-        url=args.url,
-        output_format=args.format,
-        verbose=args.verbose,
-    )
+    # Call the real content manager (falls back if Qdrant not configured)
+    try:
+        hits = content_manager.vector_search(
+            args.query,
+            collection=args.collection or "summaries",
+            qdrant_url=args.url,
+            top_k=args.limit,
+            filters=filters or None,
+            order_by=args.order_by,
+            score_threshold=args.score_threshold,
+        )
+    except Exception as e:
+        print(f"Error running semantic search: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    # Convert to upstream-like payload: {id, score, payload}
+    out = []
+    for i, h in enumerate(hits, start=1):
+        payload: Dict[str, Any] = {
+            "url": h.get("url") if isinstance(h, dict) else None,
+            "title": h.get("summary") if isinstance(h, dict) else None,
+            "executive_summary": h.get("summary") if isinstance(h, dict) else None,
+            "collection": args.collection or "summaries",
+        }
+        item = {
+            "id": h.get("url") or f"local_{i}",
+            "score": h.get("score", 0.0),
+            "payload": payload,
+        }
+        out.append(item)
 
     if args.format == "json":
-        print(json.dumps(results, indent=2))
+        print(json.dumps(out, indent=2))
     else:
-        print(json.dumps(results, indent=2))
+        # For now, output JSON even for yaml flag to avoid adding PyYAML dependency
+        print(json.dumps(out, indent=2))
 
 
 if __name__ == "__main__":

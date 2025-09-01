@@ -20,7 +20,7 @@ import re
 from .clients.github import GitHubClient
 from .clients.llm import llm_client
 from .utils.utils import get_logger, read_json_or_none, write_json_safe
-from .utils.utils import safe_filename_for_url
+from .utils.utils import safe_filename_for_url, build_qdrant_filters
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct, VectorParams, Distance
 import uuid
@@ -300,6 +300,9 @@ class ContentManager:
         model: Optional[str] = None,
         fetch_conversation: bool = False,
         cache_path: Optional[str] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        order_by: Optional[str] = None,
+        score_threshold: Optional[float] = None,
     ) -> List[Dict[str, Any]]:
         """Perform a semantic vector search against Qdrant (if available).
 
@@ -316,20 +319,37 @@ class ContentManager:
             q_embedding = self.llm.embed(query, model=model) if self.llm else [0.0]
 
         qdrant_endpoint = qdrant_url or os.environ.get("QDRANT_URL")
+        # Translate CLI filters into a Qdrant-friendly filter object
+        filter_obj = build_qdrant_filters(filters)
+
+        # Parse order_by like "created_at desc"
+        order_by_obj = None
+        if order_by and isinstance(order_by, str) and " " in order_by:
+            parts = order_by.split(" ", 1)
+            order_by_obj = {"key": parts[0], "direction": parts[1]}
+
         if QdrantClient is not None and qdrant_endpoint:
             try:
                 client = self._get_qdrant_client(qdrant_endpoint)
                 if client is not None:
                     try:
                         # qdrant-client's query_points accepts a `query` parameter
-                        # that can be a vector or a richer query object. Use that
-                        # name which is compatible with the installed client.
-                        hits = client.query_points(
-                            collection_name=collection,
-                            query=q_embedding,
-                            limit=top_k,
-                            with_payload=True,
-                        )
+                        # that can be a vector or a richer query object. Include
+                        # optional filter/order_by/score_threshold when provided.
+                        query_kwargs = {
+                            "collection_name": collection,
+                            "query": q_embedding,
+                            "limit": top_k,
+                            "with_payload": True,
+                        }
+                        if filter_obj is not None:
+                            query_kwargs["filter"] = filter_obj
+                        if order_by_obj is not None:
+                            query_kwargs["order_by"] = order_by_obj
+                        if score_threshold is not None:
+                            query_kwargs["score_threshold"] = float(score_threshold)
+
+                        hits = client.query_points(**query_kwargs)
                     except Exception:
                         # Bubble up so outer handler can log and fallback to GH search
                         raise

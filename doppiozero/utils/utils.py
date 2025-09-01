@@ -183,6 +183,55 @@ def safe_filename_for_url(url: str) -> str:
     return s
 
 
+ARRAY_FIELDS = ["labels", "topics", "participants"]
+
+
+def build_qdrant_filters(filter_args):
+    """Build a Qdrant-friendly filter object from CLI filter args.
+
+    filter_args - dict or list of strings in key:value form
+
+    Returns a dict representing a qdrant `filter` body. This is a
+    conservative port covering common cases: exact match on scalars,
+    membership checks for array fields, and created_after/created_before
+    as range checks on `created_at`.
+    """
+    if not filter_args:
+        return None
+
+    # Normalize into dict
+    if isinstance(filter_args, list):
+        filter_dict = {}
+        for f in filter_args:
+            if ":" in f:
+                k, v = f.split(":", 1)
+                filter_dict[k] = v
+    elif isinstance(filter_args, dict):
+        filter_dict = filter_args
+    else:
+        return None
+
+    must = []
+    for k, v in filter_dict.items():
+        if k in ("created_after", "created_before"):
+            # Range condition on created_at
+            # qdrant expects format like: { key: "created_at", range: {gte/lt: ...}}
+            if k == "created_after":
+                must.append({"key": "created_at", "range": {"gte": v}})
+            else:
+                must.append({"key": "created_at", "range": {"lte": v}})
+        elif k in ARRAY_FIELDS:
+            # membership test for array fields
+            must.append({"key": k, "match": {"value": v}})
+        else:
+            # scalar equality / match
+            must.append({"key": k, "match": {"value": v}})
+
+    if not must:
+        return None
+    return {"must": must}
+
+
 def load_json_if_exists(path: Optional[str]):
     """Load JSON if the given path exists, otherwise return None.
 
