@@ -25,6 +25,14 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct, VectorParams, Distance
 import uuid
 
+try:
+    # Order is optional in older qdrant-client versions
+    from qdrant_client.models import Order as QOrder
+    from qdrant_client.models import OrderType as QOrderType
+except Exception:  # pragma: no cover - optional import
+    QOrder = None
+    QOrderType = None
+
 
 logger = get_logger(__name__)
 
@@ -322,11 +330,26 @@ class ContentManager:
         # Translate CLI filters into a Qdrant-friendly filter object
         filter_obj = build_qdrant_filters(filters)
 
-        # Parse order_by like "created_at desc"
+        # Parse order_by like "created_at desc" and map to typed Qdrant Order when possible
         order_by_obj = None
         if order_by and isinstance(order_by, str) and " " in order_by:
             parts = order_by.split(" ", 1)
-            order_by_obj = {"key": parts[0], "direction": parts[1]}
+            key = parts[0]
+            direction = parts[1].lower()
+            # Default to ascending/descending mapping
+            if QOrder is not None and QOrderType is not None:
+                # Map direction to OrderType enum if available
+                try:
+                    if direction.startswith("desc"):
+                        order_type = QOrderType.DESCENDING
+                    else:
+                        order_type = QOrderType.ASCENDING
+                    order_by_obj = QOrder(key=key, order=order_type)
+                except Exception:
+                    # Fallback to simple dict shape
+                    order_by_obj = {"key": key, "direction": direction}
+            else:
+                order_by_obj = {"key": key, "direction": direction}
 
         if QdrantClient is not None and qdrant_endpoint:
             try:
