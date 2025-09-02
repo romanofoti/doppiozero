@@ -14,7 +14,7 @@ import os
 import yaml
 import urllib
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from ..utils.utils import get_logger
 
@@ -30,8 +30,6 @@ class LLMClient:
     api_key : Optional[str]
         API key for the OpenAI-compatible endpoint. Falls back to the
         OPENAI_API_KEY environment variable when omitted.
-    api_base : Optional[str]
-        Base URL for the API. Falls back to OPENAI_API_BASE environment variable.
     api_url : Optional[str]
         Specific API URL for the request. Falls back to OPENAI_URL environment variable.
     verbose : bool
@@ -41,8 +39,6 @@ class LLMClient:
     ----------
     api_key : Optional[str]
         The API key used for requests.
-    api_base : str
-        The API base URL used for requests.
     api_url : str
         The specific API URL used for requests.
     verbose : bool
@@ -91,11 +87,10 @@ class LLMClient:
         response_dc = yaml.safe_load(yaml_str)
         return response_dc if isinstance(response_dc, dict) else {}
 
-    def _call_openai_api(self, path: str, payload: dict) -> dict:
+    def _call_openai_api(self, payload: dict) -> dict:
         """Perform an HTTP POST to the OpenAI-compatible REST endpoint.
 
         Args:
-            path : The API path (e.g. '/v1/chat/completions').
             payload : The JSON-serializable payload to send.
 
         Returns:
@@ -104,19 +99,26 @@ class LLMClient:
         """
         url = self.api_url
         data = json.dumps(payload).encode("utf-8")
-        headers = {
-            "Content-Type": "application/json",
-            "api-key": self.api_key,
-        }
+        headers = {"Content-Type": "application/json"}
+        # Azure Machine Learning online endpoints expect the API key to be
+        # supplied in the Authorization header as a Bearer token. Other
+        # OpenAI-compatible endpoints (including Azure OpenAI service) may
+        # accept the "api-key" header. Choose the header based on the URL.
+        if self.api_key:
+            if ("inference.ml.azure.com" in (url or "")) or ("azureml" in (url or "")):
+                headers["Authorization"] = f"Bearer {self.api_key}"
+            else:
+                headers["api-key"] = self.api_key
 
         req = urllib.request.Request(url, data=data, headers=headers)
 
         response_dc = {}
         raw_output = ""
 
-        logger.info("-------------------------------------")
-        logger.info("Submitting the request to the LLM...")
-        logger.info("-------------------------------------")
+        if self.verbose:
+            logger.info("-------------------------------------")
+            logger.info("Submitting the request to the LLM...")
+            logger.info("-------------------------------------")
 
         try:
             response = urllib.request.urlopen(req)
@@ -130,7 +132,8 @@ class LLMClient:
                 "usage": result_dc.get("usage"),
                 "finish_reason": finish_reason,
             }
-            response_dc = self.process_raw_output(raw_output)
+            # parse raw output (the parser lives in _process_raw_output)
+            response_dc = self._process_raw_output(raw_output)
             response_dc["metadata_dc"] = metadata_dc
         except urllib.error.HTTPError as error:
             logger.info("-------------------------------------")
@@ -144,10 +147,11 @@ class LLMClient:
             logger.error(error)
             logger.info("-------------------------------------")
 
-        logger.info("**********************************")
-        logger.info("Returning the following output:")
-        logger.info(json.dumps(response_dc, indent=2))
-        logger.info("**********************************")
+        if self.verbose:
+            logger.info("**********************************")
+            logger.info("Returning the following output:")
+            logger.info(json.dumps(response_dc, indent=2))
+            logger.info("**********************************")
 
         return response_dc, raw_output
 
