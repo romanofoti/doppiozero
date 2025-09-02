@@ -100,7 +100,7 @@ class GitHubAgent:
             "search_modes": self.option_dc.get("search_modes", ["semantic", "keyword"]),
             "cache_path": self.option_dc.get("cache_path"),
             "models": model_dc,
-            "script_dir": self.option_dc.get("script_dir", "bin"),
+            "script_dir": self.option_dc.get("script_dir", "scripts"),
             "parallel": self.option_dc.get("parallel", False),
             "done": False,
         }
