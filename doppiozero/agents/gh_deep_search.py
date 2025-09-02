@@ -113,7 +113,7 @@ class GitHubAgent:
             None
 
         """
-        # Node classes were imported at module top-level
+
         initial_node = InitialResearchNode()
         clarify_node = ClarifierNode()
         planner_node = PlannerNode()
