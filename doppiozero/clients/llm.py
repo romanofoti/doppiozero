@@ -36,19 +36,26 @@ class LLMClient:
         The API base URL used for requests.
     """
 
-    def __init__(self, api_key: Optional[str] = None, api_base: Optional[str] = None):
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        api_base: Optional[str] = None,
+        api_url: Optional[str] = None,
+    ):
         """Create an LLM client using optional API credentials and base URL.
 
         Args:
             api_key : Optional API key; falls back to OPENAI_API_KEY env var.
             api_base : Optional API base URL; falls back to OPENAI_API_BASE env var.
+            api_url : Optional API URL; falls back to OPENAI_URL env var.
 
         Returns:
             None
 
         """
-        self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
-        self.api_base = api_base or os.environ.get("OPENAI_API_BASE", "https://api.openai.com")
+        self.api_key = api_key or os.environ.get("AZURE_OAI_O4_MINI_KEY")
+        self.api_base = api_base or os.environ.get("OPENAI_API_BASE", None)
+        self.api_url = api_url or os.environ.get("OPENAI_URL", None)
 
     def _call_openai_api(self, path: str, payload: dict) -> dict:
         """Perform an HTTP POST to the OpenAI-compatible REST endpoint.
@@ -61,7 +68,7 @@ class LLMClient:
             The parsed JSON response as a dictionary.
 
         """
-        url = self.api_base.rstrip("/") + path
+        url = self.api_url or self.api_base.rstrip("/") + path
         data = json.dumps(payload).encode("utf-8")
         header_dc = {
             "Content-Type": "application/json",
