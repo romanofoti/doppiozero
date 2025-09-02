@@ -12,9 +12,10 @@ code is testable without network access.
 import json
 import os
 import yaml
-import urllib
 
 from typing import Any, Dict, List, Optional
+
+from openai import AzureOpenAI
 
 from ..utils.utils import get_logger
 
@@ -64,15 +65,15 @@ class LLMClient:
             None
 
         """
-        self.api_key = api_key or os.environ.get("AZURE_OAI_O4_MINI_KEY")
+        self.api_key = api_key or os.environ.get("GPT_5_MINI_KEY")
         self.api_url = api_url or os.environ.get("OPENAI_URL")
         self.verbose = verbose
 
-    def _process_raw_output(self, raw_output) -> Dict[str, Any]:
+    def _process_raw_output(self, result_dc) -> Dict[str, Any]:
         """Parse the LLM output and extract only the 'determination' dictionary.
 
         Args:
-            raw_output (str): The raw output string from the LLM.
+            result_dc (dict): The result dictionary from the LLM.
 
         Returns:
             dict: A dictionary containing the 'determination' fields if present.
@@ -83,77 +84,39 @@ class LLMClient:
 
         """
 
+        raw_output = result_dc["choices"][0]["message"]["content"]
         yaml_str = raw_output.split("```yaml")[-1].split("```")[0].strip()
         response_dc = yaml.safe_load(yaml_str)
         return response_dc if isinstance(response_dc, dict) else {}
 
-    def _call_openai_api(self, payload: dict) -> dict:
+    def _call_openai_api(self, prompt: dict) -> dict:
         """Perform an HTTP POST to the OpenAI-compatible REST endpoint.
 
         Args:
-            payload : The JSON-serializable payload to send.
+            prompt (dict): The prompt to send to the API.
 
         Returns:
-            The parsed JSON response as a dictionary.
+            The parsed response as a dictionary.
 
         """
-        url = self.api_url
-        data = json.dumps(payload).encode("utf-8")
-        headers = {"Content-Type": "application/json"}
-        # Azure Machine Learning online endpoints expect the API key to be
-        # supplied in the Authorization header as a Bearer token. Other
-        # OpenAI-compatible endpoints (including Azure OpenAI service) may
-        # accept the "api-key" header. Choose the header based on the URL.
-        if self.api_key:
-            if ("inference.ml.azure.com" in (url or "")) or ("azureml" in (url or "")):
-                headers["Authorization"] = f"Bearer {self.api_key}"
-            else:
-                headers["api-key"] = self.api_key
-
-        req = urllib.request.Request(url, data=data, headers=headers)
-
         response_dc = {}
-        raw_output = ""
+
+        client = AzureOpenAI(
+            api_version="2024-12-01-preview", azure_endpoint=self.api_url, api_key=self.api_key
+        )
 
         if self.verbose:
             logger.info("-------------------------------------")
             logger.info("Submitting the request to the LLM...")
             logger.info("-------------------------------------")
 
-        try:
-            response = urllib.request.urlopen(req)
-            result = response.read()
-            result_dc = json.loads(result.decode("utf8", "ignore"))
-            raw_output = result_dc["choices"][0]["message"]["content"]
-            logger.info("-------------------------------------")
-            logger.info(raw_output)
-            finish_reason = result_dc["choices"][0]["finish_reason"]
-            metadata_dc = {
-                "usage": result_dc.get("usage"),
-                "finish_reason": finish_reason,
-            }
-            # parse raw output (the parser lives in _process_raw_output)
-            response_dc = self._process_raw_output(raw_output)
-            response_dc["metadata_dc"] = metadata_dc
-        except urllib.error.HTTPError as error:
-            logger.info("-------------------------------------")
-            logger.error("The urllib request failed with status code: " + str(error.code))
-            logger.error(error.info())
-            logger.error(error.read().decode("utf8", "ignore"))
-            logger.info("-------------------------------------")
-        except Exception as error:
-            logger.info("-------------------------------------")
-            logger.error("The attempt failed with the following error: " + str(error))
-            logger.error(error)
-            logger.info("-------------------------------------")
+        response_dc = client.chat.completions.create(
+            messages=[{"role": "user", "content": prompt}],
+            max_completion_tokens=int(os.environ.get("MAX_TOKENS", 1024)),
+            model=os.environ.get("MODEL", "gpt-5-mini"),
+        ).dict()
 
-        if self.verbose:
-            logger.info("**********************************")
-            logger.info("Returning the following output:")
-            logger.info(json.dumps(response_dc, indent=2))
-            logger.info("**********************************")
-
-        return response_dc, raw_output
+        return response_dc
 
     def generate(self, prompt: str, model: Optional[str] = None, max_tokens: int = 1024) -> str:
         """Return a string generated by the configured LLM or a deterministic stub.
@@ -167,22 +130,27 @@ class LLMClient:
             A generated text string from the LLM or a simulated summary on fallback.
 
         """
+        result_dc = response_dc = {}
         if self.api_key:
-            payload_dc = {
-                "model": os.environ.get("MODEL"),
-                "messages": [{"role": "user", "content": prompt}],
-                "max_completion_tokens": int(os.environ.get("MAX_TOKENS", 1024)),
-            }
             try:
-                response_dc, raw_output = self._call_openai_api(payload_dc)
-                if response_dc:
-                    return response_dc
-                return ""
+                response_dc = self._call_openai_api(prompt)
+                result_dc = self._process_raw_output(response_dc)
             except Exception as e:
+                logger.info("-------------------------------------")
                 raise RuntimeError(f"LLM request failed: {e}")
-        # Fallback stub
-        excerpt = prompt[:400]
-        return f"[SIMULATED SUMMARY]\n\n{excerpt}\n..."
+                logger.info("-------------------------------------")
+
+        if self.verbose:
+            logger.info("**********************************")
+            logger.info("Returning the following output:")
+            if result_dc:
+                logger.info(json.dumps(result_dc, indent=2))
+            else:
+                result_dc = {"fallback": "Dummy output"}
+                logger.info("No valid output received.")
+            logger.info("**********************************")
+
+        return result_dc, response_dc
 
     def embed(self, text: str, model: Optional[str] = None) -> List[float]:
         """Return an embedding vector (list of floats) for the given text.
