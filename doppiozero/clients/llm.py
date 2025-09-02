@@ -9,11 +9,16 @@ OpenAI REST API. Otherwise it falls back to deterministic local stubs so the
 code is testable without network access.
 """
 
-from typing import List, Optional
-import os
 import json
-import urllib.request
-import ssl
+import os
+import yaml
+import urllib
+
+from typing import Dict, List, Optional
+
+from ..utils.utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class LLMClient:
@@ -27,6 +32,10 @@ class LLMClient:
         OPENAI_API_KEY environment variable when omitted.
     api_base : Optional[str]
         Base URL for the API. Falls back to OPENAI_API_BASE environment variable.
+    api_url : Optional[str]
+        Specific API URL for the request. Falls back to OPENAI_URL environment variable.
+    verbose : bool
+        Whether to print verbose logging information.
 
     Attributes
     ----------
@@ -34,6 +43,11 @@ class LLMClient:
         The API key used for requests.
     api_base : str
         The API base URL used for requests.
+    api_url : str
+        The specific API URL used for requests.
+    verbose : bool
+        Whether to print verbose logging information.
+
     """
 
     def __init__(
@@ -41,6 +55,7 @@ class LLMClient:
         api_key: Optional[str] = None,
         api_base: Optional[str] = None,
         api_url: Optional[str] = None,
+        verbose: bool = False,
     ):
         """Create an LLM client using optional API credentials and base URL.
 
@@ -54,8 +69,27 @@ class LLMClient:
 
         """
         self.api_key = api_key or os.environ.get("AZURE_OAI_O4_MINI_KEY")
-        self.api_base = api_base or os.environ.get("OPENAI_API_BASE", None)
-        self.api_url = api_url or os.environ.get("OPENAI_URL", None)
+        self.api_url = api_url or os.environ.get("OPENAI_URL")
+        self.verbose = verbose
+
+    def _process_raw_output(self, raw_output) -> Dict[str, Any]:
+        """Parse the LLM output and extract only the 'determination' dictionary.
+
+        Args:
+            raw_output (str): The raw output string from the LLM.
+
+        Returns:
+            dict: A dictionary containing the 'determination' fields if present.
+
+        Note:
+            - If the output is a valid JSON object with a 'determination' key, it returns that.
+            - If the output is malformed, it returns an empty dict.
+
+        """
+
+        yaml_str = raw_output.split("```yaml")[-1].split("```")[0].strip()
+        response_dc = yaml.safe_load(yaml_str)
+        return response_dc if isinstance(response_dc, dict) else {}
 
     def _call_openai_api(self, path: str, payload: dict) -> dict:
         """Perform an HTTP POST to the OpenAI-compatible REST endpoint.
@@ -68,16 +102,54 @@ class LLMClient:
             The parsed JSON response as a dictionary.
 
         """
-        url = self.api_url or self.api_base.rstrip("/") + path
+        url = self.api_url
         data = json.dumps(payload).encode("utf-8")
-        header_dc = {
+        headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}",
+            "api-key": self.api_key,
         }
-        req = urllib.request.Request(url, data=data, headers=header_dc)
-        ctx = ssl.create_default_context()
-        with urllib.request.urlopen(req, context=ctx) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+
+        req = urllib.request.Request(url, data=data, headers=headers)
+
+        response_dc = {}
+        raw_output = ""
+
+        logger.info("-------------------------------------")
+        logger.info("Submitting the request to the LLM...")
+        logger.info("-------------------------------------")
+
+        try:
+            response = urllib.request.urlopen(req)
+            result = response.read()
+            result_dc = json.loads(result.decode("utf8", "ignore"))
+            raw_output = result_dc["choices"][0]["message"]["content"]
+            logger.info("-------------------------------------")
+            logger.info(raw_output)
+            finish_reason = result_dc["choices"][0]["finish_reason"]
+            metadata_dc = {
+                "usage": result_dc.get("usage"),
+                "finish_reason": finish_reason,
+            }
+            response_dc = self.process_raw_output(raw_output)
+            response_dc["metadata_dc"] = metadata_dc
+        except urllib.error.HTTPError as error:
+            logger.info("-------------------------------------")
+            logger.error("The urllib request failed with status code: " + str(error.code))
+            logger.error(error.info())
+            logger.error(error.read().decode("utf8", "ignore"))
+            logger.info("-------------------------------------")
+        except Exception as error:
+            logger.info("-------------------------------------")
+            logger.error("The attempt failed with the following error: " + str(error))
+            logger.error(error)
+            logger.info("-------------------------------------")
+
+        logger.info("**********************************")
+        logger.info("Returning the following output:")
+        logger.info(json.dumps(response_dc, indent=2))
+        logger.info("**********************************")
+
+        return response_dc, raw_output
 
     def generate(self, prompt: str, model: Optional[str] = None, max_tokens: int = 1024) -> str:
         """Return a string generated by the configured LLM or a deterministic stub.
@@ -92,17 +164,15 @@ class LLMClient:
 
         """
         if self.api_key:
-            model_name = model or os.environ.get("SUMMARIZATION_MODEL", "gpt-3.5-turbo")
             payload_dc = {
-                "model": model_name,
+                "model": os.environ.get("MODEL"),
                 "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": max_tokens,
+                "max_completion_tokens": int(os.environ.get("MAX_TOKENS", 1024)),
             }
             try:
-                resp = self._call_openai_api("/v1/chat/completions", payload_dc)
-                choice_ls = resp.get("choices") or []
-                if choice_ls:
-                    return choice_ls[0].get("message", {}).get("content", "")
+                response_dc, raw_output = self._call_openai_api(payload_dc)
+                if response_dc:
+                    return response_dc
                 return ""
             except Exception as e:
                 raise RuntimeError(f"LLM request failed: {e}")
