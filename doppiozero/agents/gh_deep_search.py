@@ -54,32 +54,34 @@ class GitHubAgent:
 
     """
 
-    def __init__(self, request: str, options: dict):
+    def __init__(self, request: str, option_dc: dict):
         """Initialize the agent with a request and options.
 
         Args:
             request: The user's natural-language research request.
-            options: A mapping of optional parameters (collection, models, etc.).
+            option_dc: A mapping of optional parameters (collection, models, etc.).
 
         The initializer creates `self.shared` runtime state used by the
         Flow nodes and then builds the flow graph.
         """
         # Save inputs
         self.request = request
-        self.options = options or {}
+        self.option_dc = option_dc or {}
 
         # Use module-level logger, but expose it on the instance for tests
         self.logger = logger
 
         # Build models defaults (allow explicit model keys or top-level shortcuts)
-        provided_models = self.options.get("models") or {}
+        provided_models = self.option_dc.get("models") or {}
         model_dc = {
             **{
-                "fast": self.options.get("fast_model") or provided_models.get("fast") or "default",
-                "reasoning": self.options.get("reasoning_model")
+                "fast": self.option_dc.get("fast_model")
+                or provided_models.get("fast")
+                or "default",
+                "reasoning": self.option_dc.get("reasoning_model")
                 or provided_models.get("reasoning")
                 or "default",
-                "embed": self.options.get("embed_model")
+                "embed": self.option_dc.get("embed_model")
                 or provided_models.get("embed")
                 or "default",
             },
@@ -89,17 +91,17 @@ class GitHubAgent:
         # Shared runtime state passed through the flow
         self.shared = {
             "request": request,
-            "collection": self.options.get("collection"),
-            "top_k": self.options.get("limit", 5),
-            "max_depth": self.options.get("max_depth", 2),
-            "editor_file": self.options.get("editor_file"),
-            "clarifying_qa": self.options.get("clarifying_qa"),
-            "verbose": self.options.get("verbose", False),
-            "search_modes": self.options.get("search_modes", ["semantic", "keyword"]),
-            "cache_path": self.options.get("cache_path"),
+            "collection": self.option_dc.get("collection"),
+            "top_k": self.option_dc.get("limit", 5),
+            "max_depth": self.option_dc.get("max_depth", 2),
+            "editor_file": self.option_dc.get("editor_file"),
+            "clarifying_qa": self.option_dc.get("clarifying_qa"),
+            "verbose": self.option_dc.get("verbose", False),
+            "search_modes": self.option_dc.get("search_modes", ["semantic", "keyword"]),
+            "cache_path": self.option_dc.get("cache_path"),
             "models": model_dc,
-            "script_dir": self.options.get("script_dir", "bin"),
-            "parallel": self.options.get("parallel", False),
+            "script_dir": self.option_dc.get("script_dir", "bin"),
+            "parallel": self.option_dc.get("parallel", False),
             "done": False,
         }
 
@@ -153,7 +155,7 @@ class GitHubAgent:
         suffix = " (parallel mode)" if self.shared["parallel"] else ""
         self.logger.info(f"=== GITHUB CONVERSATIONS RESEARCH AGENT{suffix} ===")
         self.logger.info(f"Request: {self.request}")
-        self.logger.info(f"Collection: {self.options.get('collection')}")
+        self.logger.info(f"Collection: {self.option_dc.get('collection')}")
         self.logger.info(f"Max results per search: {self.shared['top_k']}")
         self.logger.info(f"Max deep research iterations: {self.shared['max_depth']}")
         self.logger.info(f"Fast model: {self.shared['models'].get('fast', 'default')}")
