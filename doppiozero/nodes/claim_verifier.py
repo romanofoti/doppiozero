@@ -28,6 +28,10 @@ class VerifierNode(Node):
     This node prepares a list of claims, verifies them (synchronously), and
     records verification results into the shared flow state.
 
+    The node writes verification results into ``shared['claim_verification']``
+    and exposes a convenience list of unsupported claims at
+    ``shared['unsupported_claims']``.
+
     """
 
     def prep(self, shared):
@@ -48,19 +52,20 @@ class VerifierNode(Node):
         draft = shared.get("draft_answer") or shared.get("final_report", {}).get("draft")
         if draft and llm_client:
             try:
-                claims = self.extract_claims_from_report(
+                claim_ls = self.extract_claims_from_report(
                     draft, shared.get("models", {}).get("fast")
                 )
-                if claims:
-                    logger.info("Extracted %d claims from draft.", len(claims))
-                    return claims
+                if claim_ls:
+                    logger.info("Extracted %d claims from draft.", len(claim_ls))
+                    return claim_ls
             except Exception as e:
                 logger.debug("Claim extraction failed: %s", e)
         # Fallback: use provided claims in shared or simple placeholders
-        shared_claims = shared.get("claims")
-        if shared_claims:
-            return list(shared_claims)
-        return ["Claim 1", "Claim 2"]
+        shared_claim_ls = shared.get("claims")
+        if shared_claim_ls:
+            return list(shared_claim_ls)
+        default_claim_ls = ["Claim 1", "Claim 2"]
+        return default_claim_ls
 
     def exec(self, claims):
         """Verify claims and return a list of verification results.
@@ -72,8 +77,9 @@ class VerifierNode(Node):
             A list of dicts with ``claim`` and ``supported`` boolean fields.
 
         """
+        # `claims` is expected to be a list of strings; follow naming convention
         logger.info("Verifying %d claims against evidence...", len(claims))
-        results: List[Dict] = []
+        results_ls: List[Dict] = []
 
         # Configuration
         top_k = int(self.params.get("top_k", 5))
@@ -83,16 +89,16 @@ class VerifierNode(Node):
         for claim in claims:
             # Retrieve candidate evidence via semantic search
             try:
-                hits = content_manager.vector_search(claim, collection=collection, top_k=top_k)
+                hits_ls = content_manager.vector_search(claim, collection=collection, top_k=top_k)
             except Exception as e:
                 logger.debug("Vector search failed for claim '%s': %s", claim, e)
-                hits = []
+                hits_ls = []
 
             # Build evidence list with snippets and sources
-            evidence = []
-            for h in (hits or [])[:max_evidence]:
+            evidence_ls = []
+            for h in (hits_ls or [])[:max_evidence]:
                 snippet = h.get("summary") or str(h.get("conversation", {}))[:400]
-                evidence.append(
+                evidence_ls.append(
                     {"source": h.get("url"), "snippet": snippet, "score": h.get("score")}
                 )
 
@@ -112,27 +118,27 @@ class VerifierNode(Node):
                 logger.debug("Verification LLM failed for claim '%s': %s", claim, e)
 
             if is_supported:
-                results.append(
+                results_ls.append(
                     {
                         "claim": claim,
                         "status": "supported",
-                        "evidence": evidence,
+                        "evidence": evidence_ls,
                         "reasoning": "supported_by_evidence",
                     }
                 )
                 logger.info("\u2713 Claim supported: %s", claim[:120])
             else:
-                results.append(
+                results_ls.append(
                     {
                         "claim": claim,
                         "status": "unsupported",
-                        "evidence": evidence,
+                        "evidence": evidence_ls,
                         "reasoning": "no_support_found",
                     }
                 )
                 logger.info("\u2717 Claim unsupported: %s", claim[:120])
 
-        return results
+        return results_ls
 
     # --- Helper methods to mirror upstream node behavior ---
     def _normalize_llm_text(self, resp):
@@ -198,9 +204,9 @@ class VerifierNode(Node):
 
             # Parse JSON array
             try:
-                parsed = json.loads(cleaned.strip())
-                if isinstance(parsed, list):
-                    return [str(x).strip() for x in parsed][:25]
+                parsed_ls = json.loads(cleaned.strip())
+                if isinstance(parsed_ls, list):
+                    return [str(x).strip() for x in parsed_ls][:25]
             except Exception:
                 return []
         except Exception:
@@ -252,27 +258,27 @@ class VerifierNode(Node):
             hits = content_manager.vector_search(claim, collection=collection, top_k=limit)
             if not hits:
                 return "No relevant evidence found."
-            parts = []
+            parts_ls = []
             for i, r in enumerate(hits):
                 url = r.get("url") or "Unknown URL"
                 summary = r.get("summary") or "No summary available"
                 score = r.get("score") or 0.0
-                parts.append(
+                parts_ls.append(
                     (
                         f"Evidence {i+1} (Score: {float(score):.3f}):\n"
                         f"Source: {url}\nSummary: {summary}"
                     )
                 )
-            return "\n\n---\n\n".join(parts)
+            return "\n\n---\n\n".join(parts_ls)
         except Exception as e:
             return f"Error retrieving evidence: {e}"
 
     def exec_fallback(self, prep_res, exc):
         """Fallback used when exec raises: mark claims as inconclusive."""
         logger.error("Verifier exec failed: %s", exc)
-        out = []
+        out_ls = []
         for c in prep_res or []:
-            out.append(
+            out_ls.append(
                 {
                     "claim": c,
                     "status": "insufficient",
@@ -280,7 +286,7 @@ class VerifierNode(Node):
                     "reasoning": "verifier_error",
                 }
             )
-        return out
+        return out_ls
 
     def post(self, shared, prep_res, exec_res):
         """Record verification summary into shared state and return next action.
@@ -296,24 +302,24 @@ class VerifierNode(Node):
 
         """
         # Normalize results into shared state
-        supported = [r["claim"] for r in exec_res if r.get("status") == "supported"]
+        supported_ls = [r["claim"] for r in exec_res if r.get("status") == "supported"]
         # Upstream semantics: unsupported claims are marked with 'unsupported'
-        unsupported = [r["claim"] for r in exec_res if r.get("status") == "unsupported"]
-        insufficient = [r["claim"] for r in exec_res if r.get("status") == "insufficient"]
+        unsupported_ls = [r["claim"] for r in exec_res if r.get("status") == "unsupported"]
+        insufficient_ls = [r["claim"] for r in exec_res if r.get("status") == "insufficient"]
         shared["claim_verification"] = {
             "total_claims": len(prep_res),
-            "supported_claims": supported,
-            "unsupported_claims": unsupported,
-            "insufficient_claims": insufficient,
+            "supported_claims": supported_ls,
+            "unsupported_claims": unsupported_ls,
+            "insufficient_claims": insufficient_ls,
             "verification_errors": 0,
             "details": exec_res,
         }
         logger.info("\u2713 Claim verification complete: %d claims checked.", len(exec_res))
         # Expose a convenience list for downstream nodes
-        shared["unsupported_claims"] = unsupported
+        shared["unsupported_claims"] = unsupported_ls
 
         # If unsupported or insufficient claims exist, we may retry verification once
-        if unsupported or insufficient:
+        if unsupported_ls or insufficient_ls:
             # Track attempts in shared state; allow a single retry by default
             attempts = int(shared.get("verification_attempts", 0))
             max_attempts = int(self.params.get("max_verification_attempts", 1))
@@ -321,7 +327,7 @@ class VerifierNode(Node):
                 shared["verification_attempts"] = attempts + 1
                 logger.info(
                     "Verification incomplete: %d claims; retrying attempt %d/%d.",
-                    len(unsupported) + len(insufficient),
+                    len(unsupported_ls) + len(insufficient_ls),
                     attempts + 1,
                     max_attempts,
                 )
