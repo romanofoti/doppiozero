@@ -160,7 +160,13 @@ class GitHubAgent:
         self.logger.info(f"Max deep research iterations: {self.shared['max_depth']}")
         self.logger.info(f"Fast model: {self.shared['models'].get('fast', 'default')}")
         self.logger.info(f"Reasoning model: {self.shared['models'].get('reasoning', 'default')}")
-        return self.flow.run(self.shared)
+        # Run the flow. pocketflow.Flow.run returns the last node's return
+        # value, but nodes should place structured outputs into shared.
+        self.flow.run(self.shared)
+        # Prefer the structured final report in shared if present.
+        if "final_report" in self.shared:
+            return self.shared["final_report"]
+        return self.shared
 
 
 def start(request: str, options: dict):

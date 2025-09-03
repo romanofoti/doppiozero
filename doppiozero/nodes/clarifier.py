@@ -38,9 +38,6 @@ class ClarifierNode(Node):
 
         """
         logger.info("=== CLARIFYING QUESTIONS PHASE ===")
-        # Preserve shared on the instance so exec() and helpers can access
-        # runtime options like 'clarifying_qa' and 'editor_file'.
-        # Upstream parity expects nodes to keep a reference to shared.
         self.shared = shared
 
         # If clarifications already exist, don't ask again.

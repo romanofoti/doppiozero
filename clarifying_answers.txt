@@ -1,0 +1,6 @@
+Q: What is the main goal?
+A: Find recent authentication failure discussions across repos.
+
+Q: Are there specific repos to focus on?
+A: doppiozero and financial-planning.
+

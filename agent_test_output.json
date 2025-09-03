@@ -1,0 +1,9 @@
+{
+  "draft": "{}",
+  "num_conversations": 13,
+  "claims_verified": 0,
+  "unsupported_claims": [
+    "Claim 1",
+    "Claim 2"
+  ]
+}
