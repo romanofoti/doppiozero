@@ -387,3 +387,38 @@ def save_json(path: str, obj) -> None:
 
     """
     write_json_safe(path, obj)
+
+
+def edit_text(initial_text: str, editor_file: Optional[str] = None) -> str:
+    """Open a user editor to edit `initial_text` and return the edited content.
+
+    Uses the provided `editor_file` path if given; otherwise falls back to the
+    $EDITOR environment variable or 'vi'. Creates a temporary file, opens the
+    editor, then reads back and returns the contents.
+
+    """
+    import tempfile
+    import subprocess
+
+    fd, path = tempfile.mkstemp(suffix=".md")
+    try:
+        # Write initial content
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(initial_text)
+
+        editor = editor_file or os.environ.get("EDITOR") or "vi"
+        # Launch editor and wait for it to exit
+        try:
+            subprocess.call([editor, path])
+        except Exception:
+            # Last resort: try shelling out
+            subprocess.call(f"{editor} {path}", shell=True)
+
+        # Read edited content
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    finally:
+        try:
+            os.unlink(path)
+        except Exception:
+            pass

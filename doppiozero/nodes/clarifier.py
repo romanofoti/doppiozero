@@ -1,6 +1,8 @@
 from ..pocketflow.pocketflow import Node
-from ..utils.utils import get_logger
+from ..utils.utils import get_logger, edit_text
 from ..clients.llm import llm_client
+import os
+import json
 
 logger = get_logger(__name__)
 
@@ -40,32 +42,97 @@ class ClarifierNode(Node):
         if shared.get("clarifications"):
             logger.debug("Clarifications already present; skipping question generation.")
             return []
+
         # Default question set when LLM is not available or returns nothing
         default_qs = ["What is the main goal?", "Are there specific repos to focus on?"]
-        # If an LLM is available, ask it to generate 3 focused clarifying questions
+
+        # Build initial findings summary from shared memory (upstream parity)
+        initial_findings = ""
+        try:
+            hits = shared.get("memory", {}).get("hits", [])
+            lines = []
+            for hit in hits:
+                u = hit.get("url")
+                s = hit.get("summary") or ""
+                lines.append(f"- {u}: {s}")
+            initial_findings = "\n".join(lines)
+        except Exception:
+            initial_findings = ""
+
+        # Try to load upstream-style ASK_CLARIFY_PROMPT from prompts/ if present
+        prompt_text = None
+        # Try prompts/ask_clarify(.md|.txt)
+        cwd = os.getcwd()
+        for candidate in ("ask_clarify", "ask_clarify.md", "ask_clarify.txt"):
+            p = os.path.join(cwd, "prompts", "refine", candidate)
+            if os.path.isfile(p):
+                try:
+                    with open(p, "r", encoding="utf-8") as f:
+                        prompt_text = f.read()
+                        break
+                except Exception:
+                    prompt_text = None
+
+        # Fallback inlined prompt (keeps parity with upstream instructions)
+        if not prompt_text:
+            prompt_text = (
+                "You are an expert analyst reviewing a research request and initial findings.\n\n"
+                "## Research Request\n{{request}}\n\n## Initial Findings\n{{initial_findings}}\n\n"
+                "Based on the question and initial findings, generate up to 4 clarifying questions "
+                "that would help you better understand the intent of the request, "
+                "bridge gaps in context, and understand the expected output format. "
+                "Format your response as a numbered list, one question per line."
+            )
+
+        # Fill template
+        prompt_filled = prompt_text.replace("{{request}}", str(shared.get("request", ""))).replace(
+            "{{initial_findings}}", initial_findings
+        )
+
+        # Use fast model when available per upstream behavior
+        model_name = None
+        try:
+            model_name = shared.get("models", {}).get("fast")
+        except Exception:
+            model_name = None
+
+        # Call LLM and parse a numbered list into questions
         if llm_client:
             try:
-                prompt = (
-                    "You are a helpful assistant that generates concise clarifying "
-                    "questions to better understand a user's research request. "
-                    "Return a JSON array of short questions.\n\nRequest:\n"
-                    + str(shared.get("request", ""))
-                )
-                raw = llm_client.generate(prompt)
-                # Try to parse JSON array; fall back to newline splitting
-                try:
-                    import json
+                raw, _ = llm_client.generate(prompt_filled, model=model_name)
+            except Exception as e:
+                logger.debug("LLM clarifier generate failed: %s", e)
+                raw = ""
 
+            if raw:
+                # raw may be a single string with numbered lines
+                try:
+                    # If JSON array returned, prefer that
                     parsed = json.loads(raw)
                     if isinstance(parsed, list) and parsed:
-                        return [str(q).strip() for q in parsed]
+                        return [str(q).strip() for q in parsed][:4]
                 except Exception:
-                    lines = [line.strip() for line in raw.splitlines() if line.strip()]
-                    if lines:
-                        return lines[:5]
-            except Exception as e:
-                logger.debug("LLM clarifier failed: %s", e)
-                return default_qs
+                    pass
+
+                # Split into lines, strip numbering
+                qs = []
+                for line in raw.splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    # remove leading numbering like '1.' or '1)'
+                    cleaned = line
+                    if cleaned.lstrip().startswith(("1.", "1)")):
+                        cleaned = cleaned.split(".", 1)[-1].strip() if "." in cleaned else cleaned
+                    # remove leading digits+punct
+                    cleaned = cleaned.lstrip("0123456789. )-")
+                    if cleaned:
+                        qs.append(cleaned.strip())
+                    if len(qs) >= 4:
+                        break
+                if qs:
+                    return qs
+
         return default_qs
 
     def exec(self, questions):
@@ -79,21 +146,58 @@ class ClarifierNode(Node):
 
         """
         logger.info("Presenting clarifying questions to user...")
-        # In automated runs we may auto-answer using the LLM (or default)
-        if not questions:
-            return []
-        answers = []
-        for q in questions:
+        # If a pre-written clarifying QA file was provided, return its raw contents
+        # (upstream parity)
+        # shared['clarifying_qa'] is expected to be a filepath to a file containing inline answers.
+        # Read and return as-is so downstream nodes (reporter) can include it verbatim.
+        # Note: keep existing LLM auto-answer behavior as a non-default fallback only if
+        # an explicit flag is set in shared (e.g., 'auto_answer_clarifier').
+        return_text = None
+        shared = getattr(self, "shared", {}) or {}
+        clarifying_file = shared.get("clarifying_qa")
+        if clarifying_file:
             try:
-                if llm_client:
-                    ans = llm_client.generate(f"Q: {q}\nA:")
+                if os.path.isfile(clarifying_file):
+                    with open(clarifying_file, "r", encoding="utf-8") as f:
+                        return_text = f.read()
                 else:
-                    ans = "No clarification provided."
-            except Exception:
-                ans = "No clarification provided."
-            answers.append({"question": q, "answer": ans})
-        # Return structured clarifications
-        return answers
+                    # try relative path from cwd
+                    rel = os.path.join(os.getcwd(), clarifying_file)
+                    if os.path.isfile(rel):
+                        with open(rel, "r", encoding="utf-8") as f:
+                            return_text = f.read()
+            except Exception as e:
+                logger.warning("Failed to read clarifying_qa file %s: %s", clarifying_file, e)
+
+        if return_text is not None:
+            return return_text
+
+        # Interactive editor branch: open editor for user to answer
+        try:
+            editor_file = shared.get("editor_file") if shared else None
+            editor_content = "Please review the following questions and provide inline answers:\n\n"
+            for q in questions:
+                editor_content += q + "\n\n"
+
+            edited = edit_text(editor_content, editor_file)
+            return edited
+        except Exception:
+            # Last-resort: if automation requested, optionally auto-answer via LLM
+            if shared.get("auto_answer_clarifier") and llm_client:
+                answers = []
+                for q in questions:
+                    try:
+                        ans_raw, _ = llm_client.generate(f"Q: {q}\nA:")
+                        answers.append({"question": q, "answer": ans_raw})
+                    except Exception:
+                        answers.append({"question": q, "answer": "No clarification provided."})
+                # Convert to a readable inline string
+                lines = []
+                for a in answers:
+                    lines.append(f"Q: {a['question']}\nA: {a['answer']}\n")
+                return "\n".join(lines)
+            # If all else fails, return an empty string
+            return ""
 
     def post(self, shared, prep_res, exec_res):
         """Store clarifications into the shared flow state.
@@ -107,10 +211,16 @@ class ClarifierNode(Node):
             None
 
         """
-        # Store structured clarifications; normalize simple strings to a list.
+        # Upstream parity: store the raw exec_res (string) as shared['clarifications']
+        # so downstream report templates can include it verbatim.
         if isinstance(exec_res, str):
-            shared["clarifications"] = [{"question": None, "answer": exec_res}]
-        else:
             shared["clarifications"] = exec_res
+        else:
+            # If exec_res is structured (list/dict), serialize to a readable string
+            try:
+                shared["clarifications"] = json.dumps(exec_res, indent=2)
+            except Exception:
+                shared["clarifications"] = str(exec_res)
+
         logger.info("Clarifications stored.")
         return None
