@@ -37,6 +37,11 @@ class End(Node):
         # so we must capture shared explicitly here.
         self.shared = shared
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Use injected logger when provided, otherwise fall back to module logger
+        self.logger = get_logger(__name__)
+
     def exec(self, _prep_res):
         """Return the final report or the full shared state.
 
@@ -45,7 +50,7 @@ class End(Node):
             returns the full shared state.
 
         """
-        logger.info("End node: terminating workflow and returning results.")
+        self.logger.info("End node: terminating workflow and returning results.")
         # Return any structured final report placed into shared by earlier
         # nodes (FinalReportNode). Fall back to the full shared dict.
         return getattr(self, "shared", {}).get("final_report", getattr(self, "shared", {}))
