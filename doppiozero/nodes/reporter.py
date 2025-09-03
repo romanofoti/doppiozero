@@ -1,6 +1,8 @@
 import json
+import os
 from ..pocketflow.pocketflow import Node
 from ..utils.utils import get_logger
+from ..clients.llm import llm_client
 
 
 class FinalReportNode(Node):
@@ -53,11 +55,6 @@ class FinalReportNode(Node):
         super().__init__()
         self.logger = logger or get_logger(__name__)
         self.shared = None
-
-    # NOTE: the real prep implementation is defined below. The empty
-    # stub that used to appear here was duplicated during an earlier
-    # docstring pass and caused a redefinition error (F811). It's
-    # deliberately removed to keep a single canonical implementation.
 
     def prep(self, shared):
         """Prepare the LLM prompt by aggregating findings from shared memory.
@@ -156,7 +153,35 @@ class FinalReportNode(Node):
                     m=reasoning_model
                 )
                 self.logger.debug(_msg)
-            draft_answer = self.call_llm(prompt, reasoning_model)
+            # Prefer a prompt file if present in prompts/refine/final_report.md
+            prompt_path = os.path.join(os.getcwd(), "prompts", "refine", "final_report.md")
+            final_prompt = prompt
+            if os.path.exists(prompt_path):
+                try:
+                    with open(prompt_path, "r", encoding="utf-8") as f:
+                        tpl = f.read()
+                    final_prompt = tpl.replace("{{request}}", str(self.shared.get("request", "")))
+                    final_prompt = final_prompt.replace(
+                        "{{clarifications}}",
+                        str(self.shared.get("clarifications", "None provided")),
+                    )
+                    final_prompt = final_prompt.replace("{{all_findings}}", prompt)
+                except Exception:
+                    # If prompt file read fails, fall back to constructed prompt
+                    final_prompt = prompt
+
+            # Call the real LLM client. llm_client.generate returns (result_dc, response_dc)
+            try:
+                result_dc, response_dc = llm_client.generate(final_prompt, model=reasoning_model)
+                # Prefer structured 'fallback' or top-level string if present
+                if isinstance(result_dc, dict) and result_dc:
+                    draft_answer = json.dumps(result_dc)
+                else:
+                    # If the client returned an alternate shape, stringify the response
+                    draft_answer = str(response_dc)
+            except Exception:
+                # On any LLM failure, surface the error for routing logic
+                raise
             self.shared["draft_answer"] = draft_answer
             return draft_answer
         except Exception as e:
