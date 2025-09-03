@@ -297,7 +297,8 @@ class VerifierNode(Node):
         """
         # Normalize results into shared state
         supported = [r["claim"] for r in exec_res if r.get("status") == "supported"]
-        unsupported = [r["claim"] for r in exec_res if r.get("status") == "contradicted"]
+        # Upstream semantics: unsupported claims are marked with 'unsupported'
+        unsupported = [r["claim"] for r in exec_res if r.get("status") == "unsupported"]
         insufficient = [r["claim"] for r in exec_res if r.get("status") == "insufficient"]
         shared["claim_verification"] = {
             "total_claims": len(prep_res),
@@ -310,7 +311,23 @@ class VerifierNode(Node):
         logger.info("\u2713 Claim verification complete: %d claims checked.", len(exec_res))
         # Expose a convenience list for downstream nodes
         shared["unsupported_claims"] = unsupported
+
+        # If unsupported or insufficient claims exist, we may retry verification once
         if unsupported or insufficient:
-            # If any claims need fixing or lack evidence, request a fix/verification
+            # Track attempts in shared state; allow a single retry by default
+            attempts = int(shared.get("verification_attempts", 0))
+            max_attempts = int(self.params.get("max_verification_attempts", 1))
+            if attempts < max_attempts:
+                shared["verification_attempts"] = attempts + 1
+                logger.info(
+                    "Verification incomplete: %d claims; retrying attempt %d/%d.",
+                    len(unsupported) + len(insufficient),
+                    attempts + 1,
+                    max_attempts,
+                )
+                return "fix"
+            # Otherwise, expose the unsupported claims and request a fix from planner
+            logger.info("Verification reached max attempts (%d).", max_attempts)
+            logger.info("Requesting manual fix for unsupported/insufficient claims.")
             return "fix"
         return "ok"
