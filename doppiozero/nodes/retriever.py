@@ -1,6 +1,8 @@
 from ..pocketflow.pocketflow import Node
 from ..utils.utils import get_logger
 from ..contents import content_manager
+from typing import List
+import os
 
 logger = get_logger(__name__)
 
@@ -58,17 +60,48 @@ class RetrieverNode(Node):
 
         """
         logger.info("Executing search operations and retrieving data...")
-        result_ls = []
-        for plan in search_plans:
-            query = plan.get("query") or plan.get("q")
-            collection = plan.get("collection") or plan.get("index") or "default"
-            qdrant_url = plan.get("qdrant_url")
-            top_k = int(plan.get("top_k", 5))
-            try:
-                hit_ls = content_manager.vector_search(query, collection, qdrant_url, top_k)
-                result_ls.extend(hit_ls)
-            except Exception as e:
-                logger.error("Error during vector_search for plan %s: %s", plan, e)
+        result_ls: List[dict] = []
+
+        # Allow a single plan or a list
+        for plan in search_plans or []:
+            # Accept structured plans: {'tool': 'semantic'|'keyword', 'query': ...}
+            tool = plan.get("tool") or plan.get("type") or "semantic"
+            query = plan.get("query") or plan.get("q") or plan.get("q_str") or ""
+            collection = (
+                plan.get("collection") or plan.get("index") or os.environ.get("DEFAULT_COLLECTION")
+            )
+            top_k = int(plan.get("top_k", plan.get("limit", 5)))
+
+            # Support semantic vector search
+            if tool == "semantic":
+                try:
+                    hit_ls = content_manager.vector_search(
+                        query, collection=collection, top_k=top_k
+                    )
+                    result_ls.extend(hit_ls or [])
+                except Exception as e:
+                    logger.warning("Semantic vector_search failed for plan %s: %s", plan, e)
+
+            # Support keyword/GitHub search plans
+            elif tool == "keyword":
+                try:
+                    # Prefer a dedicated github_search if available, else fallback to general search
+                    if hasattr(content_manager, "github_search"):
+                        hit_ls = content_manager.github_search(query, max_results=top_k)
+                    else:
+                        hit_ls = content_manager.search(query, max_results=top_k)
+                    result_ls.extend(hit_ls or [])
+                except Exception as e:
+                    logger.warning("Keyword search failed for plan %s: %s", plan, e)
+
+            else:
+                # Unknown tool: attempt generic search
+                try:
+                    hit_ls = content_manager.search(query, max_results=top_k)
+                    result_ls.extend(hit_ls or [])
+                except Exception as e:
+                    logger.warning("Unknown-plan search failed for plan %s: %s", plan, e)
+
         return result_ls
 
     def post(self, shared, prep_res, exec_res):

@@ -49,18 +49,19 @@ class ClarifierNode(Node):
             return []
 
         # Default question set when LLM is not available or returns nothing
-        default_qs = ["What is the main goal?", "Are there specific repos to focus on?"]
+        # Use the project's naming convention for lists: suffix with `_ls`.
+        default_q_ls = ["What is the main goal?", "Are there specific repos to focus on?"]
 
         # Build initial findings summary from shared memory (upstream parity)
         initial_findings = ""
         try:
-            hits = shared.get("memory", {}).get("hits", [])
-            lines = []
-            for hit in hits:
+            hits_ls = shared.get("memory", {}).get("hits", [])
+            lines_ls = []
+            for hit in hits_ls:
                 u = hit.get("url")
                 s = hit.get("summary") or ""
-                lines.append(f"- {u}: {s}")
-            initial_findings = "\n".join(lines)
+                lines_ls.append(f"- {u}: {s}")
+            initial_findings = "\n".join(lines_ls)
         except Exception:
             initial_findings = ""
 
@@ -103,8 +104,16 @@ class ClarifierNode(Node):
 
         # Call LLM and parse a numbered list into questions
         if llm_client:
+            raw = ""
             try:
-                raw, _ = llm_client.generate(prompt_filled, model=model_name)
+                # Support multiple return shapes from various llm_client wrappers
+                gen_res = llm_client.generate(prompt_filled, model=model_name)
+                if isinstance(gen_res, tuple):
+                    raw = gen_res[0]
+                elif isinstance(gen_res, dict):
+                    raw = gen_res.get("text") or gen_res.get("content") or ""
+                else:
+                    raw = gen_res
             except Exception as e:
                 logger.debug("LLM clarifier generate failed: %s", e)
                 raw = ""
@@ -120,7 +129,7 @@ class ClarifierNode(Node):
                     pass
 
                 # Split into lines, strip numbering
-                qs = []
+                qs_ls = []
                 for line in raw.splitlines():
                     line = line.strip()
                     if not line:
@@ -132,13 +141,13 @@ class ClarifierNode(Node):
                     # remove leading digits+punct
                     cleaned = cleaned.lstrip("0123456789. )-")
                     if cleaned:
-                        qs.append(cleaned.strip())
-                    if len(qs) >= 4:
+                        qs_ls.append(cleaned.strip())
+                    if len(qs_ls) >= 4:
                         break
-                if qs:
-                    return qs
+                if qs_ls:
+                    return qs_ls
 
-        return default_qs
+        return default_q_ls
 
     def exec(self, questions):
         """Simulate presenting questions to the user and collect clarifications.
