@@ -3,6 +3,7 @@ from ..utils.utils import get_logger, edit_text
 from ..clients.llm import llm_client
 import os
 import json
+import sys
 
 logger = get_logger(__name__)
 
@@ -157,58 +158,83 @@ class ClarifierNode(Node):
 
         """
         logger.info("Presenting clarifying questions to user...")
-        # If a pre-written clarifying QA file was provided, return its raw contents
-        # (upstream parity)
-        # shared['clarifying_qa'] is expected to be a filepath to a file containing inline answers.
-        # Read and return as-is so downstream nodes (reporter) can include it verbatim.
-        # Note: keep existing LLM auto-answer behavior as a non-default fallback only if
-        # an explicit flag is set in shared (e.g., 'auto_answer_clarifier').
+
         return_text = None
         shared = getattr(self, "shared", {}) or {}
         clarifying_file = shared.get("clarifying_qa")
-        if clarifying_file:
-            try:
-                if os.path.isfile(clarifying_file):
-                    with open(clarifying_file, "r", encoding="utf-8") as f:
+
+        if not clarifying_file:
+            default_path = os.path.join(os.getcwd(), "clarifying_answers.txt")
+            if os.path.isfile(default_path):
+                clarifying_file = default_path
+
+        try:
+            if os.path.isfile(clarifying_file):
+                with open(clarifying_file, "r", encoding="utf-8") as f:
+                    return_text = f.read()
+            else:
+                # try relative path from cwd
+                rel = os.path.join(os.getcwd(), clarifying_file)
+                if os.path.isfile(rel):
+                    with open(rel, "r", encoding="utf-8") as f:
                         return_text = f.read()
-                else:
-                    # try relative path from cwd
-                    rel = os.path.join(os.getcwd(), clarifying_file)
-                    if os.path.isfile(rel):
-                        with open(rel, "r", encoding="utf-8") as f:
-                            return_text = f.read()
-            except Exception as e:
-                logger.warning("Failed to read clarifying_qa file %s: %s", clarifying_file, e)
+        except Exception as e:
+            logger.warning("Failed to read clarifying_qa file %s: %s", clarifying_file, e)
 
         if return_text is not None:
             return return_text
 
-        # Interactive editor branch: open editor for user to answer
+        # Interactive editor branch: open editor for user to answer, but only
+        # when running in a TTY. In notebook / non-tty environments opening an
+        # external editor will block or print warnings, so fall back to
+        # automation behavior or a safe empty response.
         try:
-            editor_file = shared.get("editor_file") if shared else None
-            editor_content = "Please review the following questions and provide inline answers:\n\n"
-            for q in questions:
-                editor_content += q + "\n\n"
-
-            edited = edit_text(editor_content, editor_file)
-            return edited
+            can_use_editor = sys.stdin.isatty() and sys.stdout.isatty()
         except Exception:
-            # Last-resort: if automation requested, optionally auto-answer via LLM
-            if shared.get("auto_answer_clarifier") and llm_client:
-                answers = []
+            can_use_editor = False
+
+        if can_use_editor:
+            try:
+                editor_file = shared.get("editor_file") if shared else None
+                editor_content = (
+                    "Please review the following questions and " "provide inline answers:\n\n"
+                )
                 for q in questions:
-                    try:
-                        ans_raw, _ = llm_client.generate(f"Q: {q}\nA:")
-                        answers.append({"question": q, "answer": ans_raw})
-                    except Exception:
-                        answers.append({"question": q, "answer": "No clarification provided."})
-                # Convert to a readable inline string
-                lines = []
-                for a in answers:
-                    lines.append(f"Q: {a['question']}\nA: {a['answer']}\n")
-                return "\n".join(lines)
-            # If all else fails, return an empty string
-            return ""
+                    editor_content += q + "\n\n"
+
+                edited = edit_text(editor_content, editor_file)
+                return edited
+            except Exception:
+                logger.debug("Editor failed; falling back to automation or empty response.")
+
+        # Last-resort: if automation requested, optionally auto-answer via LLM
+        if shared.get("auto_answer_clarifier") and llm_client:
+            answers = []
+            for q in questions:
+                try:
+                    gen = llm_client.generate(f"Q: {q}\nA:")
+                    if isinstance(gen, tuple):
+                        ans_raw = gen[0]
+                    elif isinstance(gen, dict):
+                        ans_raw = gen.get("text") or gen.get("content") or ""
+                    else:
+                        ans_raw = gen
+                    answers.append({"question": q, "answer": ans_raw})
+                except Exception:
+                    answers.append({"question": q, "answer": "No clarification provided."})
+            # Convert to a readable inline string
+            lines = []
+            for a in answers:
+                lines.append(f"Q: {a['question']}\nA: {a['answer']}\n")
+            return "\n".join(lines)
+
+        # If all else fails (non-tty, no clarifying file, and no auto-answer),
+        # return an empty string so the flow can continue without blocking.
+        logger.info(
+            "Non-interactive environment detected and no clarifying answers present; "
+            "continuing without user edits."
+        )
+        return ""
 
     def post(self, shared, prep_res, exec_res):
         """Store clarifications into the shared flow state.
