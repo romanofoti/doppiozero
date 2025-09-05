@@ -1,4 +1,28 @@
-## Quick context (read first)
+## Chat style / response policy (read first)
+
+Your typical default chat response include:
+ 1 - A summary of what you think I am asking and what you plan to do.
+ 2 - A quick plan, with steps to address the request, which often repeats some of the content surfaced in the summary.
+ 3 - A checklist of what you will cover, bulleted, with more details but also with more repetitions of what already surfaced in the previous paragraphs.
+ 4 - A live explanation of your actions as they go.
+ 5 - A progress update, often bulleted.
+ 6 - A summary of the results, bulleted.
+ 7 - Caveats or limitations of the current approach, bulleted.
+ 8 - Next steps, bulleted.
+
+All the above is absolutely overkill for most exchanges!
+
+For every interaction, I want you to follow the following rules:
+ - If I ask you a question, always just answer the question in a concise manner, preferably with fewer than 200 words. If an answer requires more than that, provide a 2-line summary (<= 200 chars) and an expandable "Details" section.
+ - If I ask you to carry out a task, only provide the plan checklist, a live explanation of your actions (bullet 4 above), a concise summary of results and a list of suggested next steps. Only resort to your default operating style if I explicitly request it by saying "Please elaborate" at the end of the message or as a follow up message.
+
+Additional guidelines:
+- When changing files, list files changed (path + one-line purpose).
+- Include a “How I validated” line with quick results (build/test/pass/fail) if applicable.
+- Ask a single clarifying question if instructions are ambiguous.
+- When editing files, run quick validation: `poetry run pytest` (if available) or `poetry run flake8 .` and report PASS/FAIL. If tests cannot be run, state why (missing venv, env vars, etc).
+
+## Quick context
 
 - This repository implements a node-based research agent (`doppiozero.agents.gh_deep_search.GitHubAgent`) that builds a Flow of small nodes (prep/exec/post) defined in `doppiozero/nodes/` and orchestrated by the PocketFlow primitives in `doppiozero/pocketflow/pocketflow.py`.
 - This work is a python-based port of the work done in `jonmagic/scripts` (source code here: https://github.com/jonmagic/scripts). Please refer to the original repository whenever in doubt about implementation details.
