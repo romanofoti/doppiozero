@@ -1,20 +1,7 @@
 ## Chat style / response policy (read first)
 
-Your typical default chat response include:
- 1 - A summary of what you think I am asking and what you plan to do.
- 2 - A quick plan, with steps to address the request, which often repeats some of the content surfaced in the summary.
- 3 - A checklist of what you will cover, bulleted, with more details but also with more repetitions of what already surfaced in the previous paragraphs.
- 4 - A live explanation of your actions as they go.
- 5 - A progress update, often bulleted.
- 6 - A summary of the results, bulleted.
- 7 - Caveats or limitations of the current approach, bulleted.
- 8 - Next steps, bulleted.
-
-All the above is absolutely overkill for most exchanges!
-
-For every interaction, I want you to follow the following rules:
- - If I ask you a question, always just answer the question in a concise manner, preferably with fewer than 200 words. If an answer requires more than that, provide a 2-line summary (<= 200 chars) and an expandable "Details" section.
- - If I ask you to carry out a task, only provide the plan checklist, a live explanation of your actions (bullet 4 above), a concise summary of results and a list of suggested next steps. Only resort to your default operating style if I explicitly request it by saying "Please elaborate" at the end of the message or as a follow up message.
+- When the user asks a direct question (i.e., a request for information or a short confirmation) respond with the concise answer only. Do not include any leading or framing sentence such as "I'll answer", "I will now explain", "Here's what I'll do next", or any other meta-commentary. Don't include checklists. Don't provide next steps. Just answer as if you were a chat. Limit the answer to <=200 words unless the user explicitly asks for more by saying "Please elaborate your answer". If a clarifying question is essential, ask it in one sentence only and without preamble.
+- If I ask you to carry out a task, only provide the plan checklist, a live explanation of your actions as you carry them out, a concise summary of results and a list of suggested next steps. Only resort to your default operating style if I explicitly request it by saying "Please elaborate" at the end of the message or as a follow up message.
 
 Additional guidelines:
 - When changing files, list files changed (path + one-line purpose).
