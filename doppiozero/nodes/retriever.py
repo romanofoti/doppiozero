@@ -1,131 +1,247 @@
 from ..pocketflow.pocketflow import Node
 from ..utils.utils import get_logger
 from ..contents import content_manager
-from typing import List
+from typing import List, Dict, Any
 import os
 
 logger = get_logger(__name__)
 
 
 class RetrieverNode(Node):
-    """A node that performs retrieval/search operations and records results.
+    """Perform iterative retrieval/search over GitHub conversations and record results.
 
-    Parameters
-    ----------
-    None
+    This node executes one retrieval iteration per invocation. It supports both
+    semantic (vector) and keyword search modes, enriches the raw hits with
+    conversation bodies and generated summaries, deduplicates results across
+    iterations, and records per-iteration research notes.
 
-    Attributes
-    ----------
-    logger : logging.Logger
-        Module-level logger obtained via :func:`doppiozero.utils.utils.get_logger`.
-    Inherits attributes from :class:`pocketflow.pocketflow.Node`.
+    Enhanced behavior:
+    - Semantic hits enriched with conversation bodies (``fetch_conversation=True``)
+    - Generates missing summaries using an executive summary prompt if provided
+    - Deduplicates by URL in :meth:`post` (upgrading blank summaries / conversations)
+    - Records per-iteration research notes (parity with upstream Ruby implementation)
+    - Continues deep-research only when new unique conversations are added
 
-    Notes
-    -----
-    The RetrieverNode executes search plans using
-    :func:`doppiozero.contents.content_manager.vector_search` and stores
-    results into shared memory under ``memory``.
+    Expected shared state keys (read / mutated):
+    - ``shared['memory']``: ``{'hits': [...], 'notes': [...], 'search_queries': [...]}``
+        - ``shared['executive_summary_prompt_path']`` | ``shared['prompt_path']``: Optional summary
+            prompt path.
+    - ``shared['cache_path']``: Optional cache directory.
+    - ``shared['collection']``: Default semantic vector collection name.
 
+    Returns (routing):
+    - ``continue`` token when further retrieval iterations should run.
+    - ``final`` token when depth exhausted or no new unique hits were added.
     """
 
     def prep(self, shared):
-        """Prepare the retrieval phase by returning the next search plans.
+        """Return the list of search plan dictionaries for this iteration.
 
-        This method is called before execution. It typically inspects the
-        shared state and returns a list of search plans that the
-        ``exec`` method will process.
+        Parameters
+        ----------
+        shared : Dict[str, Any]
+            The shared flow state containing (optionally) ``next_search_plans``.
 
-        Args:
-            shared : the shared flow state containing keys like ``next_search_plans``.
-
-        Returns:
-            A list of search plan dicts to execute. If none are present, an empty list is returned.
-
+        Returns
+        -------
+        List[Dict[str, Any]]
+            List of search plan dicts. Empty when no further retrieval is scheduled.
         """
         logger.info("=== RETRIEVAL PHASE ===")
         return shared.get("next_search_plans", [])
 
-    def exec(self, search_plans):
-        """Execute the search plans and return retrieved conversation summaries.
+    def exec(self, search_plan_ls):  # type: ignore[override]
+        """Execute search plans, enrich results, and return the enriched list.
 
-        This method performs the actual retrieval (e.g. semantic or keyword
-        search) and returns a list of result dicts. Each result dict should
-        include at least ``url``, ``summary``, and ``score``.
+        Workflow Steps
+        --------------
+        1. Perform semantic or keyword retrieval.
+        2. Fetch conversation bodies for semantic results.
+        3. Generate summaries for items missing one when a summary prompt exists.
+        4. Tag each result with its originating search mode.
 
-        Args:
-            search_plans : a list of search plan dicts produced by :meth:`prep`.
+        Parameters
+        ----------
+        search_plan_ls : List[Dict[str, Any]]
+            The list of search plan dictionaries returned from :meth:`prep`.
 
-        Returns:
-            A list of result dictionaries describing retrieved conversations.
-
+        Returns
+        -------
+        List[Dict[str, Any]]
+            Enriched result dictionaries (may be empty when no plans provided).
         """
         logger.info("Executing search operations and retrieving data...")
-        result_ls: List[dict] = []
+        enriched_result_ls: List[Dict[str, Any]] = []
 
-        # Allow a single plan or a list
-        for plan in search_plans or []:
-            # Accept structured plans: {'tool': 'semantic'|'keyword', 'query': ...}
+        if not search_plan_ls:
+            logger.info("No search plans provided to RetrieverNode.exec")
+            return enriched_result_ls
+
+        shared = getattr(self, "shared", {}) or {}
+        cache_path = shared.get("cache_path")
+        summary_prompt_path = shared.get("executive_summary_prompt_path") or shared.get(
+            "prompt_path"
+        )
+        collection_default = shared.get("collection") or os.environ.get("DEFAULT_COLLECTION")
+
+        for plan in search_plan_ls:
             tool = plan.get("tool") or plan.get("type") or "semantic"
             query = plan.get("query") or plan.get("q") or plan.get("q_str") or ""
-            collection = (
-                plan.get("collection") or plan.get("index") or os.environ.get("DEFAULT_COLLECTION")
-            )
+            collection = plan.get("collection") or plan.get("index") or collection_default
             top_k = int(plan.get("top_k", plan.get("limit", 5)))
 
-            # Support semantic vector search
             if tool == "semantic":
                 try:
-                    hit_ls = content_manager.vector_search(
-                        query, collection=collection, top_k=top_k
+                    hit_ls = (
+                        content_manager.vector_search(
+                            query,
+                            collection=collection,
+                            top_k=top_k,
+                            fetch_conversation=True,
+                            cache_path=cache_path,
+                        )
+                        or []
                     )
-                    result_ls.extend(hit_ls or [])
                 except Exception as e:
-                    logger.warning("Semantic vector_search failed for plan %s: %s", plan, e)
+                    logger.warning("Semantic vector_search failed: %s", e)
+                    hit_ls = []
+                for h in hit_ls:
+                    h.setdefault("search_mode", "semantic")
+                    if (not h.get("summary")) and summary_prompt_path and h.get("url"):
+                        try:
+                            generated = content_manager.summarize(
+                                h["url"], summary_prompt_path, cache_path=cache_path
+                            )
+                            if generated:
+                                h["summary"] = generated
+                        except Exception as se:
+                            logger.debug("Failed to summarize %s: %s", h.get("url"), se)
+                    enriched_result_ls.append(h)
+                continue
 
-            # Support keyword/GitHub search plans
-            elif tool == "keyword":
+            if tool == "keyword":
                 try:
-                    # Prefer a dedicated github_search if available, else fallback to general search
                     if hasattr(content_manager, "github_search"):
-                        hit_ls = content_manager.github_search(query, max_results=top_k)
+                        raw_hit_ls = content_manager.github_search(query, max_results=top_k) or []
                     else:
-                        hit_ls = content_manager.search(query, max_results=top_k)
-                    result_ls.extend(hit_ls or [])
+                        raw_hit_ls = content_manager.search(query, max_results=top_k) or []
                 except Exception as e:
-                    logger.warning("Keyword search failed for plan %s: %s", plan, e)
+                    logger.warning("Keyword search failed: %s", e)
+                    raw_hit_ls = []
+                for r in raw_hit_ls:
+                    url = r.get("url") or r.get("html_url")
+                    if not url:
+                        continue
+                    summary_txt = r.get("summary") or r.get("title") or ""
+                    convo_dc: Dict[str, Any] = {}
+                    try:
+                        convo_dc = content_manager.fetcher.fetch_github_conversation(
+                            url, cache_path=cache_path
+                        )
+                    except Exception as fe:
+                        logger.debug("Conversation fetch failed for %s: %s", url, fe)
+                    if (not summary_txt) and summary_prompt_path:
+                        try:
+                            summary_txt = content_manager.summarize(
+                                url, summary_prompt_path, cache_path=cache_path
+                            )
+                        except Exception as se:
+                            logger.debug("Failed to summarize keyword result %s: %s", url, se)
+                    enriched_result_ls.append(
+                        {
+                            "url": url,
+                            "summary": summary_txt,
+                            "score": r.get("score", 0.0),
+                            "search_mode": "keyword",
+                            "conversation": convo_dc,
+                        }
+                    )
+                continue
 
-            else:
-                # Unknown tool: attempt generic search
-                try:
-                    hit_ls = content_manager.search(query, max_results=top_k)
-                    result_ls.extend(hit_ls or [])
-                except Exception as e:
-                    logger.warning("Unknown-plan search failed for plan %s: %s", plan, e)
+            # Fallback unknown tool
+            try:
+                fallback_hit_ls = content_manager.search(query, max_results=top_k) or []
+            except Exception as e:
+                logger.warning("Unknown tool search failed for '%s': %s", query, e)
+                fallback_hit_ls = []
+            for r in fallback_hit_ls:
+                url = r.get("url")
+                if not url:
+                    continue
+                enriched_result_ls.append(
+                    {
+                        "url": url,
+                        "summary": r.get("title") or r.get("summary") or "",
+                        "score": r.get("score", 0.0),
+                        "search_mode": tool,
+                        "conversation": {},
+                    }
+                )
 
-        return result_ls
+        return enriched_result_ls
 
     def post(self, shared, prep_res, exec_res):
-        """Post-process retrieved results and update shared memory.
+        """Deduplicate, upgrade, note progress, and decide routing token.
 
-        This method stores the execution results into the shared memory
-        structure, updates search query history, and advances the depth
-        counter for the flow.
+        Parameters
+        ----------
+        shared : Dict[str, Any]
+            Shared flow state (mutated in-place).
+        prep_res : List[Dict[str, Any]]
+            Search plan dicts executed in this iteration.
+        exec_res : List[Dict[str, Any]]
+            Enriched retrieval results produced by :meth:`exec`.
 
-        Args:
-            shared : the shared state dictionary used across nodes.
-            prep_res : the preparation result returned by :meth:`prep`.
-            exec_res : the execution result returned by :meth:`exec`.
-
-        Returns:
-            A control token for the flow: "continue" to keep iterating or
-            "final" to stop when max depth is reached.
-
+        Returns
+        -------
+        str
+            ``continue`` when another iteration should run, else ``final``.
         """
-        shared["memory"]["hits"].extend(exec_res)
-        shared["memory"]["search_queries"].append(", ".join([plan["query"] for plan in prep_res]))
-        logger.info(f"Added {len(exec_res)} new conversations to memory.")
+        memory_dc = shared.setdefault("memory", {})
+        hits_ls = memory_dc.setdefault("hits", [])
+        search_queries_ls = memory_dc.setdefault("search_queries", [])
+        notes_ls = memory_dc.setdefault("notes", [])
+
+        existing_by_url_dc: Dict[str, Dict[str, Any]] = {}
+        for hit_dc in hits_ls:
+            url = hit_dc.get("url")
+            if url:
+                existing_by_url_dc[url] = hit_dc
+
+        new_unique_count = 0
+        for new_hit_dc in exec_res or []:
+            url = new_hit_dc.get("url")
+            if not url:
+                continue
+            existing_dc = existing_by_url_dc.get(url)
+            if not existing_dc:
+                hits_ls.append(new_hit_dc)
+                existing_by_url_dc[url] = new_hit_dc
+                new_unique_count += 1
+                continue
+            upgraded = False
+            if (not existing_dc.get("summary")) and new_hit_dc.get("summary"):
+                existing_dc["summary"] = new_hit_dc["summary"]
+                upgraded = True
+            if (not existing_dc.get("conversation")) and new_hit_dc.get("conversation"):
+                existing_dc["conversation"] = new_hit_dc.get("conversation")
+                upgraded = True
+            if upgraded:
+                logger.debug("Upgraded existing hit for %s", url)
+
+        executed_query_ls = [plan.get("query") for plan in prep_res if plan.get("query")]
+        if executed_query_ls:
+            search_queries_ls.append(", ".join(executed_query_ls))
+
+        iteration_idx = shared.get("current_depth", 0) + 1
+        note_str = (
+            f"Iteration {iteration_idx}: executed {len(executed_query_ls)} queries; "
+            f"added {new_unique_count} new unique conversations (total={len(hits_ls)})."
+        )
+        notes_ls.append(note_str)
+        logger.info(note_str)
+
         shared["current_depth"] = shared.get("current_depth", 0) + 1
-        if shared["current_depth"] < shared["max_depth"]:
+        if shared["current_depth"] < shared.get("max_depth", 0) and new_unique_count > 0:
             return "continue"
-        else:
-            return "final"
+        return "final"

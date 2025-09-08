@@ -102,41 +102,56 @@ class ClarifierNode(Node):
 
         # Call LLM and parse a numbered list into questions
         if llm_client:
-            raw = ""
+            raw_txt = ""
             try:
-                # Support multiple return shapes from various llm_client wrappers
                 gen_res = llm_client.generate(prompt_filled, model=model_name)
+                # Expected shapes from lazy client: (result_dc, response_dc)
                 if isinstance(gen_res, tuple):
-                    raw = gen_res[0]
+                    first = gen_res[0]
+                    if isinstance(first, dict):
+                        # Attempt to pick a meaningful field, else serialize
+                        for k in ("text", "content", "output", "fallback"):
+                            if k in first and isinstance(first[k], str):
+                                raw_txt = first[k]
+                                break
+                        if not raw_txt:
+                            try:
+                                raw_txt = json.dumps(first)
+                            except Exception:
+                                raw_txt = str(first)
+                    else:
+                        raw_txt = str(first)
                 elif isinstance(gen_res, dict):
-                    raw = gen_res.get("text") or gen_res.get("content") or ""
+                    for k in ("text", "content", "output", "fallback"):
+                        if k in gen_res and isinstance(gen_res[k], str):
+                            raw_txt = gen_res[k]
+                            break
+                    if not raw_txt:
+                        raw_txt = json.dumps(gen_res)
                 else:
-                    raw = gen_res
+                    raw_txt = str(gen_res)
             except Exception as e:
                 logger.debug("LLM clarifier generate failed: %s", e)
-                raw = ""
+                raw_txt = ""
 
-            if raw:
-                # raw may be a single string with numbered lines
+            if raw_txt:
+                # Try JSON array first
                 try:
-                    # If JSON array returned, prefer that
-                    parsed = json.loads(raw)
+                    parsed = json.loads(raw_txt)
                     if isinstance(parsed, list) and parsed:
                         return [str(q).strip() for q in parsed][:4]
                 except Exception:
                     pass
 
-                # Split into lines, strip numbering
+                # Fallback: parse numbered/text lines
                 qs_ls = []
-                for line in raw.splitlines():
+                for line in raw_txt.splitlines():
                     line = line.strip()
                     if not line:
                         continue
-                    # remove leading numbering like '1.' or '1)'
                     cleaned = line
                     if cleaned.lstrip().startswith(("1.", "1)")):
                         cleaned = cleaned.split(".", 1)[-1].strip() if "." in cleaned else cleaned
-                    # remove leading digits+punct
                     cleaned = cleaned.lstrip("0123456789. )-")
                     if cleaned:
                         qs_ls.append(cleaned.strip())

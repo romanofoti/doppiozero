@@ -1,6 +1,6 @@
 {
-  "draft": "{}",
-  "num_conversations": 13,
+  "draft": "{'id': 'chatcmpl-CCUvx7KKKEDI2VKBU007QJHgEO904', 'choices': [{'finish_reason': 'length', 'index': 0, 'logprobs': None, 'message': {'content': '', 'refusal': None, 'role': 'assistant', 'annotations': [], 'audio': None, 'function_call': None, 'tool_calls': None}, 'content_filter_results': {}}], 'created': 1757094881, 'model': 'gpt-5-mini-2025-08-07', 'object': 'chat.completion', 'service_tier': None, 'system_fingerprint': None, 'usage': {'completion_tokens': 1024, 'prompt_tokens': 153, 'total_tokens': 1177, 'completion_tokens_details': {'accepted_prediction_tokens': 0, 'audio_tokens': 0, 'reasoning_tokens': 1024, 'rejected_prediction_tokens': 0}, 'prompt_tokens_details': {'audio_tokens': 0, 'cached_tokens': 0}}, 'prompt_filter_results': [{'prompt_index': 0, 'content_filter_results': {'hate': {'filtered': False, 'severity': 'safe'}, 'jailbreak': {'filtered': False, 'detected': False}, 'self_harm': {'filtered': False, 'severity': 'safe'}, 'sexual': {'filtered': False, 'severity': 'safe'}, 'violence': {'filtered': False, 'severity': 'safe'}}}]}",
+  "num_conversations": 0,
   "claims_verified": 0,
   "unsupported_claims": [
     "Claim 1",

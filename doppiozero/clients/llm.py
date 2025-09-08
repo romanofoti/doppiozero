@@ -54,40 +54,116 @@ class LLMClient:
         api_url: Optional[str] = None,
         verbose: bool = False,
     ):
-        """Create an LLM client using optional API credentials and base URL.
+        """Create an LLM client using optional API credentials.
 
-        Args:
-            api_key : Optional API key; falls back to OPENAI_API_KEY env var.
-            api_base : Optional API base URL; falls back to OPENAI_API_BASE env var.
-            api_url : Optional API URL; falls back to OPENAI_URL env var.
+        This constructor is intentionally LAZY: it does not raise if credentials
+        are absent. Environment variables are (re)read on the first call to
+        :meth:`generate` or :meth:`embed` so notebooks can call ``load_dotenv``
+        after importing the module without breaking the singleton import pattern.
 
-        Returns:
-            None
+        Checked environment variable order for the API key:
+        1. Explicit ``api_key`` argument
+        2. ``GPT_5_MINI_KEY`` (project specific)
+        3. ``OPENAI_API_KEY`` (generic)
+        4. ``AZURE_OAI_4O_KEY`` (alternate naming)
 
+        The API URL is taken from the explicit ``api_url`` argument or the
+        ``OPENAI_URL`` environment variable. If still absent at call time a
+        deterministic stub is used.
         """
-        self.api_key = api_key or os.environ.get("GPT_5_MINI_KEY")
+        self.api_key = (
+            api_key
+            or os.environ.get("GPT_5_MINI_KEY")
+            or os.environ.get("OPENAI_API_KEY")
+            or os.environ.get("AZURE_OAI_4O_KEY")
+        )
         self.api_url = api_url or os.environ.get("OPENAI_URL")
         self.verbose = verbose
 
-    def _process_raw_output(self, result_dc) -> Dict[str, Any]:
-        """Parse the LLM output and extract only the 'determination' dictionary.
+    # --- internal helpers ---
+    def _refresh_env_if_needed(self):
+        """Refresh environment-derived credentials if they are currently missing.
 
-        Args:
-            result_dc (dict): The result dictionary from the LLM.
-
-        Returns:
-            dict: A dictionary containing the 'determination' fields if present.
-
-        Note:
-            - If the output is a valid JSON object with a 'determination' key, it returns that.
-            - If the output is malformed, it returns an empty dict.
-
+        Called at the start of each public operation to enable late loading of
+        environment variables (e.g. after ``load_dotenv()`` in a notebook).
         """
+        if not self.api_key:
+            self.api_key = (
+                os.environ.get("GPT_5_MINI_KEY")
+                or os.environ.get("OPENAI_API_KEY")
+                or os.environ.get("AZURE_OAI_4O_KEY")
+            )
+            if self.api_key:
+                logger.info("[LLM] Acquired API key ending with %s", self.api_key[-4:])
+        if not self.api_url:
+            self.api_url = os.environ.get("OPENAI_URL")
+            if self.api_url:
+                logger.info("[LLM] Using API URL: %s", self.api_url)
 
-        raw_output = result_dc["choices"][0]["message"]["content"]
-        yaml_str = raw_output.split("```yaml")[-1].split("```")[0].strip()
-        response_dc = yaml.safe_load(yaml_str)
-        return response_dc if isinstance(response_dc, dict) else {}
+    def _process_raw_output(self, result_dc) -> Dict[str, Any]:
+        """Normalize raw OpenAI / Azure response content into a dict.
+
+        Parsing strategy (defensive to avoid noisy errors on plain text):
+        1. Extract message content.
+        2. If fenced YAML block detected (```yaml), parse just that block.
+        3. Else if content looks like JSON (starts with { or [), attempt JSON parse.
+        4. Else if colon-heavy structure suggests YAML (simple heuristic), attempt YAML parse.
+        5. On any parse failure, return a fallback dict with the raw text.
+
+        Always returns a dictionary so downstream code has a consistent shape.
+        """
+        try:
+            raw_output = result_dc.get("choices", [{}])[0].get("message", {}).get("content", "")
+        except Exception:
+            raw_output = ""
+
+        if not raw_output:
+            return {"fallback": "empty_response"}
+
+        content = raw_output.strip()
+        lower_content = content.lower()
+
+        # Case 1: fenced yaml
+        if "```yaml" in lower_content:
+            try:
+                yaml_block = raw_output.split("```yaml", 1)[1].split("```", 1)[0].strip()
+                parsed = yaml.safe_load(yaml_block)
+                if isinstance(parsed, dict):
+                    return parsed
+                if isinstance(parsed, list):
+                    return {"items": parsed}
+            except Exception:
+                return {"fallback": content}
+
+        # Case 2: looks like JSON
+        if content.startswith("{") or content.startswith("["):
+            try:
+                parsed_json = json.loads(content)
+                if isinstance(parsed_json, dict):
+                    return parsed_json
+                return {"items": parsed_json}
+            except Exception:
+                pass
+
+        # Case 3: heuristic YAML (multiple lines with ': ')
+        colon_lines = 0
+        total_lines = 0
+        for ln in content.splitlines()[:20]:  # inspect only first 20 lines
+            total_lines += 1
+            if ":" in ln:
+                colon_lines += 1
+        if total_lines > 0 and colon_lines / total_lines > 0.6:
+            try:
+                parsed_yaml = yaml.safe_load(content)
+                if isinstance(parsed_yaml, dict):
+                    return parsed_yaml
+                if isinstance(parsed_yaml, list):
+                    return {"items": parsed_yaml}
+            except Exception:
+                pass
+
+        # Fallback: treat as plain text (enumerated list, etc.)
+        return {"fallback": content}
 
     def _call_openai_api(
         self,
@@ -106,6 +182,11 @@ class LLMClient:
         Returns:
             The raw response dictionary from the client.
         """
+
+        # Caller ensures _refresh_env_if_needed has run. If still missing
+        # credentials we operate in stub mode and never invoke network calls.
+        if not self.api_key or not self.api_url:
+            raise RuntimeError("LLM client not configured (missing api key or url)")
 
         client = AzureOpenAI(
             api_version="2024-12-01-preview",
@@ -149,15 +230,24 @@ class LLMClient:
             A generated text string from the LLM or a simulated summary on fallback.
 
         """
-        result_dc = response_dc = {}
-        if self.api_key:
+        # Ensure we have the latest env vars if they were loaded after import
+        self._refresh_env_if_needed()
+        result_dc: Dict[str, Any] = {}
+        response_dc: Dict[str, Any] = {}
+        if self.api_key and self.api_url:
             try:
                 response_dc = self._call_openai_api(prompt, request_type="chat")
                 result_dc = self._process_raw_output(response_dc)
             except Exception as e:
-                logger.info("-------------------------------------")
-                raise RuntimeError(f"LLM request failed: {e}")
-                logger.info("-------------------------------------")
+                logger.exception("LLM request failed: %s", e)
+                # Fall back to deterministic stub output rather than raising
+                result_dc = {"fallback": "llm_error"}
+                response_dc = {"error": str(e)}
+        else:
+            # Deterministic stub path when no credentials available
+            truncated = (prompt[:60] + "...") if len(prompt) > 60 else prompt
+            result_dc = {"fallback": f"stub: {truncated}"}
+            response_dc = {"stub": True}
 
         if self.verbose:
             logger.info("**********************************")
@@ -182,24 +272,21 @@ class LLMClient:
             A list of floats representing the embedding vector.
 
         """
-        if self.api_key:
+        self._refresh_env_if_needed()
+        if self.api_key and self.api_url:
             model_name = model or os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
             try:
                 if self.verbose:
                     logger.info("[EMBED] Requesting embedding using model %s", model_name)
-
                 response_dc = self._call_openai_api(text, request_type="embed", model=model_name)
                 data_ls = response_dc.get("data") or []
                 embedding = data_ls[0].get("embedding", []) if data_ls else []
-
                 if self.verbose:
-                    emb_len = len(embedding) if embedding else 0
-                    logger.info("[EMBED] Received embedding (len=%s)", emb_len)
-
+                    logger.info("[EMBED] Received embedding (len=%s)", len(embedding))
                 return embedding
-            except Exception as e:
-                logger.exception("Embeddings request failed")
-                raise RuntimeError(f"Embeddings request failed: {e}")
+            except Exception:
+                logger.exception("Embeddings request failed; falling back to stub embedding")
+                # fall through to stub below
         # Fallback deterministic pseudo-embedding
         v_ls = [0.0] * 128
         h = 0

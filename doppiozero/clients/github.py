@@ -9,6 +9,10 @@ import os
 
 from github import Github
 
+from ..utils.utils import get_logger
+
+logger = get_logger(__name__)
+
 
 class GitHubClient:
     """
@@ -37,12 +41,11 @@ class GitHubClient:
 
         """
         token = token or os.environ.get("GITHUB_TOKEN")
-        if Github is None:
-            raise ImportError("PyGithub is not installed")
         if token:
+            logger.info("Using GitHub API token ending with %s", token[-4:])
             self.gh = Github(token)
         else:
-            self.gh = Github()
+            raise ValueError("GitHub API token is required")
 
     def _normalize_user(self, u) -> Optional[str]:
         """Normalize a PyGithub user object to a login string.
