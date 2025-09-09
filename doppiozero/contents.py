@@ -356,7 +356,7 @@ class ContentManager:
         try:
             q_embedding_ls = self.llm.embed(query, model=model)
         except Exception:
-            q_embedding_ls = self.llm.embed(query, model=model) if self.llm else [0.0]
+            q_embedding_ls = [0.0]
 
         qdrant_endpoint = qdrant_url or os.environ.get("QDRANT_URL")
         # Translate CLI filters into a Qdrant-friendly filter object
