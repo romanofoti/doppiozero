@@ -52,8 +52,9 @@ class DeciderNode(Node):
             ```
         """
 
-        # Call the LLM to make a decision
+        logger.info("Carrying out LLM call to decide...")
         result_dc, response_dc = llm_client.generate(prompt)
+        logger.info(f"LLM call completed with response: {response_dc}")
 
         return result_dc
 

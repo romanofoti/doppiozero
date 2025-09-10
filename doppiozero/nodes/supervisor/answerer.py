@@ -28,7 +28,7 @@ class AnswererNode(Node):
             """
             return dummy_answer
 
-        logger.info("✍️ Crafting final answer...")
+        logger.info("✍️ Crafting answer via LLM call...")
 
         # Create a prompt for the LLM to answer the question
         prompt = f"""

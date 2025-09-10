@@ -12,7 +12,7 @@ class SupervisorNode(Node):
         """Get the current answer for evaluation."""
         context = shared.get("context", "No previous search")
         question = shared["question"]
-        answer = shared["answer"]
+        answer = shared.get("answer", "No previous answer")
         return question, context, answer
 
     def exec(self, input_tp: Tuple[str, str, str]):
