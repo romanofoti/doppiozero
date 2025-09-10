@@ -7,7 +7,7 @@ from ..utils.utils import get_logger
 logger = get_logger(__name__)
 
 
-class UnreliableAnswerNode(Node):
+class Answerer(Node):
     def prep(self, shared):
         """Get the question and context for answering."""
         return shared["question"], shared.get("context", "")
