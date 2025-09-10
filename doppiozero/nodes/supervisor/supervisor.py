@@ -43,8 +43,6 @@ class SupervisorNode(Node):
         # Call the LLM to generate an answer
         result_dc, response_dc = llm_client.generate(prompt)
 
-        return result_dc
-
         if result_dc.get("valid"):
             return {"valid": True, "reason": "Answer appears to be legitimate."}
         else:

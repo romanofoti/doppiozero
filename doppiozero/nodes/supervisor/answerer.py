@@ -1,3 +1,4 @@
+import json
 import random
 
 from ...clients.llm import llm_client
@@ -39,10 +40,17 @@ class AnswererNode(Node):
 
             ## YOUR ANSWER:
             Provide a comprehensive answer using the research results.
-            """
+            Return your response in this format:
+
+            ```yaml
+            answer: <your comprehensive answer>
+            ```
+        """
         # Call the LLM to generate an answer
         result_dc, response_dc = llm_client.generate(prompt)
-
+        logger.info(
+            f"LLM call completed. Generated the following result: {json.dumps(result_dc, indent=2)}"
+        )
         return result_dc
 
     def post(self, shared, prep_res, exec_res):
