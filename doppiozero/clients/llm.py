@@ -227,7 +227,9 @@ class LLMClient:
             function call.
 
         Returns:
-            A generated text string from the LLM or a simulated summary on fallback.
+            A tuple containing the result and response dictionaries:
+                response_dc : The raw response from the LLM API
+                result_dc : The processed result from the LLM
 
         """
         # Ensure we have the latest env vars if they were loaded after import

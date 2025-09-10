@@ -15,9 +15,6 @@ class SupervisorAgent:
         Args:
             param_dc: A mapping of optional parameters (collection, models, etc.).
 
-        The initializer creates `self.shared` runtime state used by the
-        Flow nodes and then builds the flow graph.
-
         """
         self.param_dc = param_dc or {}
         self.logger = logger
@@ -40,26 +37,26 @@ class SupervisorAgent:
         answer = Answerer()
 
         # Connect the nodes
-        # If DecideAction returns "search", go to SearchWeb
+        # If ActionDecider returns "search", go to WebSearcher
         decide - "search" >> search
 
-        # If DecideAction returns "answer", go to UnreliableAnswerNode
+        # If ActionDecider returns "answer", go to Answerer
         decide - "answer" >> answer
 
-        # After SearchWeb completes and returns "decide", go back to DecideAction
+        # After WebSearcher completes and returns "decide", go back to ActionDecider
         search - "decide" >> decide
 
         # Create and return the inner flow, starting with the ActionDecider node
         return Flow(start=decide)
 
-    def create_supervised_flow():
+    def create_supervised_flow(self):
         """
         Create a supervised agent flow by treating the entire agent flow as a node
         and placing the supervisor outside of it.
 
-        The flow works like this:
+        The flow works as follows:
         1. Inner agent flow does research and generates an answer
-        2. SupervisorNode checks if the answer is valid
+        2. Supervisor checks if the answer is valid
         3. If answer is valid, flow completes
         4. If answer is invalid, restart the inner agent flow
 
