@@ -6,7 +6,7 @@ from ...utils.utils import get_logger
 logger = get_logger(__name__)
 
 
-class WebSearcher(Node):
+class SearcherNode(Node):
     def prep(self, shared):
         """Get the search query from the shared store."""
         return shared["search_query"]

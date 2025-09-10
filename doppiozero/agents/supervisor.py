@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
 from ..pocketflow.pocketflow import Flow
-from ..nodes.supervisor import ActionDecider, Answerer, Supervisor, WebSearcher
+from ..nodes.supervisor import Decider, Answerer, Supervisor, Searcher
 from ..utils.utils import get_logger
 
 logger = get_logger(__name__)
@@ -32,21 +32,21 @@ class SupervisorAgent:
             Flow: A research agent flow
         """
         # Create instances of each node
-        decide = ActionDecider()
-        search = WebSearcher()
+        decide = Decider()
+        search = Searcher()
         answer = Answerer()
 
         # Connect the nodes
-        # If ActionDecider returns "search", go to WebSearcher
+        # If Decider returns "search", go to Searcher
         decide - "search" >> search
 
-        # If ActionDecider returns "answer", go to Answerer
+        # If Decider returns "answer", go to Answerer
         decide - "answer" >> answer
 
-        # After WebSearcher completes and returns "decide", go back to ActionDecider
+        # After WebSearcher completes and returns "decide", go back to Decider
         search - "decide" >> decide
 
-        # Create and return the inner flow, starting with the ActionDecider node
+        # Create and return the inner flow, starting with the Decider node
         return Flow(start=decide)
 
     def create_supervised_flow(self):

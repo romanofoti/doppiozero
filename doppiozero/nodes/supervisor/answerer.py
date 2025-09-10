@@ -1,13 +1,13 @@
 import random
 
 from ...clients.llm import llm_client
-from ..pocketflow.pocketflow import Node
-from ..utils.utils import get_logger
+from ...pocketflow.pocketflow import Node
+from ...utils.utils import get_logger
 
 logger = get_logger(__name__)
 
 
-class Answerer(Node):
+class AnswererNode(Node):
     def prep(self, shared):
         """Get the question and context for answering."""
         return shared["question"], shared.get("context", "")

@@ -1,11 +1,11 @@
-from pocketflow import Node
+from ...pocketflow import Node
 from ...clients.llm import llm_client
 from ...utils.utils import get_logger
 
 logger = get_logger(__name__)
 
 
-class ActionDecider(Node):
+class DeciderNode(Node):
     def prep(self, shared):
         """Prepare the context and question for the decision-making process."""
         # Get the current context (default to "No previous search" if none exists)
