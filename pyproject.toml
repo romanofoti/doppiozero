@@ -7,6 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "3.12.2"
+duckduckgo-search = "^7.5.2"
 jupyter = "^1.1.1"
 openai = "^1.103.0"
 PyGithub = "^2.7.0"
