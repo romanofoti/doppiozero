@@ -7,74 +7,77 @@ from ..utils.utils import get_logger
 logger = get_logger(__name__)
 
 
-class SupervisorAgent:
+class SupervisorAgent(Flow):
+    """Agent that performs iterative research with an optional supervision loop.
 
-    def __init__(self, param_dc: Dict[str, Any]):
-        """Initialize the agent with a request and options.
+    The design separates two layers:
+    1. Unsupervised research cycle (decide -> search/answer) that accumulates context.
+    2. Supervisory evaluation (optional) that can reject an answer and trigger a retry.
 
-        Args:
-            param_dc: A mapping of optional parameters (collection, models, etc.).
+    Parameters
+    ----------
+    param_dc : Dict[str, Any], optional
+        Configuration parameters (e.g. model selectors, collection names, limits). Stored
+        for prospective extensibility; not all keys are currently consumed.
 
-        """
+    Attributes
+    ----------
+    start_node : Node
+        Entry point of the (supervised) flow once assembled.
+    param_dc : Dict[str, Any]
+        User-supplied configuration mapping.
+    logger : logging.Logger
+        Logger instance for structured output.
+
+    """
+
+    def __init__(self, param_dc: Dict[str, Any] = None):
+        super().__init__()
         self.param_dc = param_dc or {}
         self.logger = logger
 
-    def create_unsupervised_flow(self):
-        """
-        Create the inner research agent flow without supervision.
+    def create_unsupervised_flow(self, return_flow: bool = False) -> Flow:
+        """Build the core research loop without supervision.
 
-        This flow handles the research cycle:
-        1. ActionDecider node decides whether to search or answer
-        2. If search, go to WebSearcher node and return to decide
-        3. If answer, go to Answerer node
+        The loop topology:
+            Decider --(search)--> Searcher --(decide)--> Decider
+            Decider --(answer)--> Answerer (terminal branch)
+
+        Args:
+            return_flow : if True, wrap and return the start node in a ``Flow`` (useful for nesting
+                          inside a supervising wrapper). If False, return the raw start ``Node``.
 
         Returns:
-            Flow: A research agent flow
+        Node or Flow
+            DeciderNode when ``return_flow`` is False, otherwise a Flow(start=DeciderNode).
+
         """
-        # Create instances of each node
         decide = DeciderNode()
         search = SearcherNode()
         answer = AnswererNode()
 
-        # Connect the nodes
-        # If Decider returns "search", go to Searcher
         decide - "search" >> search
-
-        # If Decider returns "answer", go to Answerer
         decide - "answer" >> answer
-
-        # After WebSearcher completes and returns "decide", go back to Decider
         search - "decide" >> decide
 
-        # Create and return the inner flow, starting with the Decider node
-        return Flow(start=decide)
+        self.start_node = decide
+        if return_flow:
+            return Flow(start=decide)
 
-    def create_supervised_flow(self):
+    def create_supervised_flow(self) -> None:
+        """Compose a supervised variant of the research loop.
+
+        Layout:
+            [InnerFlow] -> Supervisor --(retry)--> [InnerFlow]
+
+        The inner flow (built via ``create_unsupervised_flow(return_flow=True)``) is treated
+        as a single node. The supervisor evaluates the produced answer and either ends the
+        run (no action) or emits ``"retry"`` to re-enter the inner loop.
+
         """
-        Create a supervised agent flow by treating the entire agent flow as a node
-        and placing the supervisor outside of it.
 
-        The flow works as follows:
-        1. Inner agent flow does research and generates an answer
-        2. Supervisor checks if the answer is valid
-        3. If answer is valid, flow completes
-        4. If answer is invalid, restart the inner agent flow
-
-        Returns:
-            Flow: A complete research agent flow with supervision
-        """
-        # Create the inner flow
-        agent_flow = self.create_unsupervised_flow()
-
-        # Create the supervisor node
-        supervisor = Supervisor()
-
-        # Connect the components
-        # After agent_flow completes, go to supervisor
+        agent_flow = self.create_unsupervised_flow(return_flow=True)  # Flow instance
+        supervisor = SupervisorNode()
         agent_flow >> supervisor
-
-        # If supervisor rejects the answer, go back to agent_flow
         supervisor - "retry" >> agent_flow
-
-        # Create and return the outer flow, starting with the agent_flow
-        return Flow(start=agent_flow)
+        self.start_node = supervisor
