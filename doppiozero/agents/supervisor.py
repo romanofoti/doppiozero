@@ -80,4 +80,4 @@ class SupervisorAgent(Flow):
         supervisor = SupervisorNode()
         agent_flow >> supervisor
         supervisor - "retry" >> agent_flow
-        self.start_node = supervisor
+        self.start_node = agent_flow

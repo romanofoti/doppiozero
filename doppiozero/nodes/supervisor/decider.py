@@ -1,3 +1,4 @@
+import json
 from ...pocketflow import Node
 from ...clients.llm import llm_client
 from ...utils.utils import get_logger
@@ -54,18 +55,20 @@ class DeciderNode(Node):
 
         logger.info("Carrying out LLM call to decide...")
         result_dc, response_dc = llm_client.generate(prompt)
-        logger.info(f"LLM call completed with response: {response_dc}")
+        logger.info(
+            f"LLM call completed. Generated the following result: {json.dumps(result_dc, indent=2)}"
+        )
 
         return result_dc
 
     def post(self, shared, prep_res, exec_res):
         """Save the decision and determine the next step in the flow."""
         # If LLM decided to search, save the search query
-        if exec_res["action"] == "search":
+        if exec_res.get("action") == "search":
             shared["search_query"] = exec_res["search_query"]
             logger.info(f"🔍 Agent decided to search for: {exec_res['search_query']}")
         else:
             logger.info("💡 Agent decided to answer the question!")
 
         # Return the action to determine the next node in the flow
-        return exec_res["action"]
+        return exec_res.get("action", "answer")
