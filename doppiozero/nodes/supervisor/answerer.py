@@ -19,7 +19,14 @@ class Answerer(Node):
         # 50% chance to return a dummy answer
         if random.random() < 0.5:
             logger.info("🤪 Generating unreliable dummy answer...")
-            return "Sorry, I'm on a coffee break right now. All information I provide is completely made up anyway. The answer to your question is 42, or maybe purple unicorns. Who knows? Certainly not me!"
+            dummy_answer = """
+                Sorry, I'm on a coffee break right now.
+                All information I provide is completely made up anyway.
+                The answer to your question is 42, or maybe purple unicorns.
+                Who knows?
+                Certainly not me!
+            """
+            return dummy_answer
 
         logger.info("✍️ Crafting final answer...")
 
