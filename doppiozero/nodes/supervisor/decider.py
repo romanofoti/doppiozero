@@ -5,7 +5,7 @@ from ...utils.utils import get_logger
 logger = get_logger(__name__)
 
 
-class DecideAction(Node):
+class ActionDecider(Node):
     def prep(self, shared):
         """Prepare the context and question for the decision-making process."""
         # Get the current context (default to "No previous search" if none exists)
