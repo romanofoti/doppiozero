@@ -71,7 +71,7 @@ class SearcherNode(Node):
         attempts = 3
         for attempt in range(1, attempts + 1):
             try:
-                results = list(ddgs.text(norm_query, backend="lite", max_results=3))
+                results = list(ddgs.text(norm_query, backend="lite", max_results=5))
                 self._record_query(norm_query)
                 results_str_parts = []
                 for r in results:
@@ -108,12 +108,16 @@ class SearcherNode(Node):
     def post(self, shared, prep_res, exec_res):
         """Save the search results and go back to the decision node."""
         # Add the search results to the context in the shared store
+        shared["search_attempts"] = shared.get("search_attempts", 0) + 1
         previous = shared.get("context", "")
         shared["context"] = (
             previous + "\n\nSEARCH: " + shared["search_query"] + "\nRESULTS: " + exec_res
         )
 
-        logger.info("📚 Found information, analyzing results...")
+        if shared.get("verbose", False):
+            logger.info(f"📚 Information collected: {exec_res}, analyzing results...")
+        else:
+            logger.info("📚 Information collected, analyzing results...")
 
         # Always go back to the decision node after searching
         return "decide"

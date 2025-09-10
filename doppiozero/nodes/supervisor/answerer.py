@@ -1,5 +1,4 @@
 import json
-import random
 
 from ...clients.llm import llm_client
 from ...pocketflow.pocketflow import Node
@@ -11,25 +10,11 @@ logger = get_logger(__name__)
 class AnswererNode(Node):
     def prep(self, shared):
         """Get the question and context for answering."""
-        return shared["question"], shared.get("context", "")
+        return shared["question"], shared.get("context", ""), shared.get("verbose", False)
 
     def exec(self, inputs):
         """Call the LLM to generate a final answer with 50% chance of returning a dummy answer."""
-        question, context = inputs
-
-        # 50% chance to return a dummy answer
-        if random.random() < 0.5:
-            logger.info("🤪 Generating unreliable dummy answer...")
-            dummy_answer = """
-                Sorry, I'm on a coffee break right now.
-                All information I provide is completely made up anyway.
-                The answer to your question is 42, or maybe purple unicorns.
-                Who knows?
-                Certainly not me!
-            """
-            return dummy_answer
-
-        logger.info("✍️ Crafting answer via LLM call...")
+        question, context, verbose = inputs
 
         # Create a prompt for the LLM to answer the question
         prompt = f"""
@@ -48,10 +33,10 @@ class AnswererNode(Node):
         """
         # Call the LLM to generate an answer
         result_dc, response_dc = llm_client.generate(prompt)
-        logger.info(
-            f"LLM call completed. Generated the following result: {json.dumps(result_dc, indent=2)}"
-        )
-        return result_dc
+        logger.info("LLM call completed.")
+        if verbose:
+            logger.info(f"Generated the following result: {json.dumps(result_dc, indent=2)}")
+        return result_dc.get("answer", "No acceptable answer found.")
 
     def post(self, shared, prep_res, exec_res):
         """Save the final answer and complete the flow."""

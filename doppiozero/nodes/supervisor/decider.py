@@ -13,12 +13,14 @@ class DeciderNode(Node):
         context = shared.get("context", "No previous search")
         # Get the question from the shared store
         question = shared["question"]
+
+        search_attempts = shared.get("search_attempts", 0)
         # Return both for the exec step
-        return question, context
+        return question, context, search_attempts, shared.get("verbose", False)
 
     def exec(self, inputs):
         """Call the LLM to decide whether to search or answer."""
-        question, context = inputs
+        question, context, search_attempts, verbose = inputs
 
         logger.info("🤔 Agent deciding what to do next...")
 
@@ -28,6 +30,7 @@ class DeciderNode(Node):
             You are a research assistant that can search the web.
             Question: {question}
             Previous Research: {context}
+            Number of Previous Search Attempts: {search_attempts}
 
             ### ACTION SPACE
             [1] search
@@ -41,7 +44,10 @@ class DeciderNode(Node):
                 - answer (str): Final answer to the question
 
             ## NEXT ACTION
-            Decide the next action based on the context and available actions.
+            Decide the next action based on the context and available actions. Consider the number
+            of previous search attempts and whether new information has emerged that warrants
+            further searching.
+
             Return your response in this format:
 
             ```yaml
@@ -55,9 +61,9 @@ class DeciderNode(Node):
 
         logger.info("Carrying out LLM call to decide...")
         result_dc, response_dc = llm_client.generate(prompt)
-        logger.info(
-            f"LLM call completed. Generated the following result: {json.dumps(result_dc, indent=2)}"
-        )
+        logger.info("LLM call completed.")
+        if verbose:
+            logger.info(f"Generated the following result: {json.dumps(result_dc, indent=2)}")
 
         return result_dc
 
