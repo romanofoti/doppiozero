@@ -1,7 +1,6 @@
 from duckduckgo_search import DDGS
 
 from pocketflow import Node
-from ...clients.llm import llm_client
 from ...utils.utils import get_logger
 
 logger = get_logger(__name__)
