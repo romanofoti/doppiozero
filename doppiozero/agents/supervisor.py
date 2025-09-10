@@ -1,7 +1,7 @@
 from typing import Any, Dict
 
 from ..pocketflow.pocketflow import Flow
-from ..nodes.supervisor import Decider, Answerer, Supervisor, Searcher
+from ..nodes.supervisor import DeciderNode, AnswererNode, SearcherNode, SupervisorNode
 from ..utils.utils import get_logger
 
 logger = get_logger(__name__)
@@ -32,9 +32,9 @@ class SupervisorAgent:
             Flow: A research agent flow
         """
         # Create instances of each node
-        decide = Decider()
-        search = Searcher()
-        answer = Answerer()
+        decide = DeciderNode()
+        search = SearcherNode()
+        answer = AnswererNode()
 
         # Connect the nodes
         # If Decider returns "search", go to Searcher
