@@ -157,4 +157,4 @@ class AnswererNode(Node):
         logger.info("✅ Answer generated successfully!")
 
         if shared.get("verbose", False):
-            logger.info(f"Answer: " f"{exec_res.get('Answer', 'No answer provided')}")
+            logger.info(f"Answer: {exec_res}")
