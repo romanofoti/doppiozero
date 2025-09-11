@@ -80,7 +80,8 @@ class SupervisorAgent(Flow):
         supervisor = SupervisorNode()
 
         class TerminalNode(Node):
-            pass
+            def post(self, shared, prep_res, exec_res):
+                return shared.get("answer", "No answer found")
 
         terminal = TerminalNode()
 

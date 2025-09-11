@@ -75,6 +75,11 @@ class DeciderNode(Node):
             logger.info(f"🔍 Agent decided to search for: {exec_res['search_query']}")
         else:
             logger.info("💡 Agent decided to answer the question!")
+            if shared.get("verbose", False):
+                logger.info(
+                    f"The reasoning behind this choice is the following: "
+                    f"{exec_res.get('reason', 'No reasoning provided')}"
+                )
 
         # Return the action to determine the next node in the flow
         return exec_res.get("action", "answer")
