@@ -242,22 +242,16 @@ class LLMClient:
         self._refresh_env_if_needed()
         result_dc: Dict[str, Any] = {}
         response_dc: Dict[str, Any] = {}
-        if self.api_key and self.api_url:
-            try:
-                response_dc = self._call_openai_api(
-                    prompt, request_type="chat", model=model, max_tokens=max_tokens
-                )
-                result_dc = self._process_raw_output(response_dc)
-            except Exception as e:
-                logger.exception("LLM request failed: %s", e)
-                # Fall back to deterministic stub output rather than raising
-                result_dc = {"fallback": "llm_error"}
-                response_dc = {"error": str(e)}
-        else:
-            # Deterministic stub path when no credentials available
-            truncated = (prompt[:60] + "...") if len(prompt) > 60 else prompt
-            result_dc = {"fallback": f"stub: {truncated}"}
-            response_dc = {"stub": True}
+        try:
+            response_dc = self._call_openai_api(
+                prompt, request_type="chat", model=model, max_tokens=max_tokens
+            )
+            result_dc = self._process_raw_output(response_dc)
+        except Exception as e:
+            logger.error("LLM request failed: %s", e)
+            # Fall back to deterministic stub output rather than raising
+            result_dc = {"fallback": "llm_error"}
+            response_dc = {"error": str(e)}
 
         if self.verbose:
             logger.info("**********************************")
@@ -283,28 +277,18 @@ class LLMClient:
 
         """
         self._refresh_env_if_needed()
-        if self.api_key and self.api_url:
-            model_name = model or os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
-            try:
-                if self.verbose:
-                    logger.info("[EMBED] Requesting embedding using model %s", model_name)
-                response_dc = self._call_openai_api(text, request_type="embed", model=model_name)
-                data_ls = response_dc.get("data") or []
-                embedding = data_ls[0].get("embedding", []) if data_ls else []
-                if self.verbose:
-                    logger.info("[EMBED] Received embedding (len=%s)", len(embedding))
-                return embedding
-            except Exception:
-                logger.exception("Embeddings request failed; falling back to stub embedding")
-                # fall through to stub below
-        # Fallback deterministic pseudo-embedding
-        v_ls = [0.0] * 128
-        h = 0
-        for ch in text:
-            h = (h * 31 + ord(ch)) & 0xFFFFFFFF
-        for i in range(len(v_ls)):
-            v_ls[i] = ((h >> (i % 32)) & 0xFF) / 255.0
-        return v_ls
+        model_name = model or os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
+        try:
+            if self.verbose:
+                logger.info("[EMBED] Requesting embedding using model %s", model_name)
+            response_dc = self._call_openai_api(text, request_type="embed", model=model_name)
+            data_ls = response_dc.get("data") or []
+            embedding = data_ls[0].get("embedding", []) if data_ls else []
+            if self.verbose:
+                logger.info("[EMBED] Received embedding (len=%s)", len(embedding))
+            return embedding
+        except Exception:
+            raise RuntimeError("Embeddings request failed!")
 
 
 # Backward-compat convenience: a default client instance can be used by callers
