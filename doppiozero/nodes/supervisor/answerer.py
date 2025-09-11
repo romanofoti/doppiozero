@@ -150,6 +150,8 @@ class AnswererNode(Node):
     def post(self, shared, prep_res, exec_res):
         """Save the final answer and complete the flow."""
         shared["answer"] = exec_res
-        shared.get("answer_ls", []).append(exec_res)
+        if not shared.get("answer_ls"):
+            shared["answer_ls"] = []
+        shared["answer_ls"].append(exec_res)
 
         logger.info("✅ Answer generated successfully!")

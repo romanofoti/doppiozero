@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from ..pocketflow.pocketflow import Flow
+from ..pocketflow.pocketflow import Flow, Node
 from ..nodes.supervisor import DeciderNode, AnswererNode, SearcherNode, SupervisorNode
 from ..utils.utils import get_logger
 
@@ -78,6 +78,14 @@ class SupervisorAgent(Flow):
 
         agent_flow = self.create_unsupervised_flow(return_flow=True)  # Flow instance
         supervisor = SupervisorNode()
-        agent_flow >> supervisor
-        supervisor - "retry" >> agent_flow
+
+        class TerminalNode(Node):
+            pass
+
+        terminal = TerminalNode()
+
+        # Wire the inner research flow to the supervisor, then either retry or end.
+        agent_flow >> supervisor  # default successor from inner flow
+        supervisor >> terminal  # default (approval) path
+        supervisor - "retry" >> agent_flow  # rejection loops back
         self.start_node = agent_flow
