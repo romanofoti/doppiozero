@@ -51,8 +51,7 @@ class DeciderNode(Node):
             Return your response in this format:
 
             ```yaml
-            thinking: |
-                <your step-by-step reasoning process>
+            thinking: <your step-by-step reasoning process>
             action: search OR answer
             reason: <why you chose this action>
             search_query: <specific search query if action is search>

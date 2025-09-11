@@ -133,6 +133,8 @@ class LLMClient:
                 if isinstance(parsed, list):
                     return {"items": parsed}
             except Exception:
+                logger.warning("Failed to parse YAML block!")
+                logger.warning(f"Content output: {content}")
                 return {"fallback": content}
 
         # Case 2: looks like JSON
@@ -141,6 +143,8 @@ class LLMClient:
                 parsed_json = json.loads(content)
                 if isinstance(parsed_json, dict):
                     return parsed_json
+                logger.warning("Failed to parse JSON response as a dictionary!")
+                logger.warning(f"Parsed JSON items: {parsed_json}")
                 return {"items": parsed_json}
             except Exception:
                 pass

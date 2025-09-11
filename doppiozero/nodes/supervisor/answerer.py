@@ -155,3 +155,6 @@ class AnswererNode(Node):
         shared["answer_ls"].append(exec_res)
 
         logger.info("✅ Answer generated successfully!")
+
+        if shared.get("verbose", False):
+            logger.info(f"Answer: " f"{exec_res.get('Answer', 'No answer provided')}")
