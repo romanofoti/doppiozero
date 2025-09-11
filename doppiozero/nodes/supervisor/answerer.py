@@ -83,11 +83,12 @@ class AnswererNode(Node):
         stage: str,
     ) -> Tuple[str, str]:
         """Helper to call LLM and return (answer_text, finish_reason)."""
-        prompt = """
+
+        prompt = f"""
             ### CONTEXT
             Based on the following information, answer the question.
             Question: {question}
-            Research: {compacted_context}
+            Research: {context}
 
             ## YOUR ANSWER
             Provide a comprehensive yet concise answer based on your general knowledge plus the
@@ -101,7 +102,7 @@ class AnswererNode(Node):
         """
         result_dc, response_dc = llm_client.generate(prompt, max_tokens=max_tokens)
         finish_reason = self._extract_finish_reason(response_dc)
-        answer_text = result_dc.get("answer") or result_dc.get("fallback") or ""
+        answer_text = result_dc.get("answer") or ""
         if verbose:
             logger.info(
                 f"Stage={stage} finish_reason={finish_reason} "
