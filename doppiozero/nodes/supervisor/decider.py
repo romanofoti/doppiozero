@@ -48,7 +48,7 @@ class DeciderNode(Node):
             of previous search attempts and whether new information has emerged that warrants
             further searching.
 
-            Return your response in this format:
+            Return your response in this format, making sure to adhere to it:
 
             ```yaml
             thinking: <your step-by-step reasoning process>

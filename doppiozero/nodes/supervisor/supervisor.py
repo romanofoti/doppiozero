@@ -35,7 +35,7 @@ class SupervisorNode(Node):
             valid.
 
             ## YOUR RESPONSE:
-            Return your response in this format:
+            Return your response in this format, making sure to adhere to it:
 
             ```yaml
             valid: true OR false

@@ -94,7 +94,7 @@ class AnswererNode(Node):
             Provide a comprehensive yet concise answer based on your general knowledge plus the
             available research.
 
-            Return your response in this format:
+            Return your response in this format, making sure to adhere to it:
 
             ```yaml
             answer: <your comprehensive answer>

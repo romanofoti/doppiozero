@@ -147,7 +147,8 @@ class LLMClient:
                 logger.warning(f"Parsed JSON items: {parsed_json}")
                 return {"items": parsed_json}
             except Exception:
-                pass
+                logger.warning(f"Failed to parse JSON response: {content}")
+                return {"fallback": content}
 
         # Case 3: heuristic YAML (multiple lines with ': ')
         colon_lines = 0
@@ -164,9 +165,8 @@ class LLMClient:
                 if isinstance(parsed_yaml, list):
                     return {"items": parsed_yaml}
             except Exception:
-                pass
+                logger.warning(f"Failed to parse heuristic YAML: {content}")
 
-        # Fallback: treat as plain text (enumerated list, etc.)
         return {"fallback": content}
 
     def _call_openai_api(
