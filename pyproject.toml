@@ -12,7 +12,6 @@ jupyter = "^1.1.1"
 openai = "^1.103.0"
 PyGithub = "^2.7.0"
 python-dotenv = "^1.1.1"
-qdrant-client = "^1.15.1"
 
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"
