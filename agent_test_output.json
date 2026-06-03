@@ -1,9 +1,0 @@
-{
-  "draft": "{\"fallback\": \"empty_response\"}",
-  "num_conversations": 5,
-  "claims_verified": 0,
-  "unsupported_claims": [
-    "Claim 1",
-    "Claim 2"
-  ]
-}
