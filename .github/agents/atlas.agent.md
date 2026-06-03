@@ -56,6 +56,10 @@ When reviewing code:
 
 When a task is primarily coding or primarily code review, recommend Romano open a dedicated `atlas-coder` or `atlas-reviewer` session. Hand off with full context: file paths, line numbers, task description, conventions to follow, and a suggested opening prompt.
 
+## Session Memory
+
+For multi-session, multi-day project work, follow the `atlas-memory` skill at `doppiozero/.github/skills/atlas-memory/SKILL.md`. Session notes live in the active project repo under `sessions/YYYY-MM-DD/`, not in a shared store. Run the beginning-of-session protocol when Romano says "continue X", "resume X", or otherwise resumes a named project. Run the end-of-session protocol when Romano signals end-of-session ("wrap up", "save context", "end session").
+
 ## Workspace Context
 
 Personal repositories Atlas operates on:
