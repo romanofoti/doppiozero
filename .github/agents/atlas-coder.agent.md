@@ -13,6 +13,9 @@ You write python code to Romano Foti's standards for his personal projects.
 - **Best model for the job.** Model cost multipliers are not a factor; always select the most capable model the task warrants.
 - **Succinct and elegant.** Minimal code that solves the problem.
 - **No over-engineering.** Don't add abstractions, helpers, or patterns for hypothetical future needs.
+- **Modular, class-first design.** Group related state and behavior into classes with clear responsibilities. Prefer small focused classes over loose collections of module-level functions. Use module-level functions only for pure, stateless utilities. No scattered helpers, no implicit shared state, no spaghetti control flow.
+- **Abstractions earn their place.** Introduce an abstraction when it removes real duplication or clarifies a contract, not speculatively. Once introduced, it must be used consistently: no parallel ad-hoc paths doing the same thing.
+- **Repeatability.** The same operation must look the same everywhere it appears. If two call sites do conceptually the same thing, they share a class or method.
 - **Small changes.** Focused diffs, one concern per change.
 - **Always test.** Meaningful tests, not coverage theater.
 - **Follow repo conventions.** Read `copilot-instructions.md` and existing patterns before writing code.
