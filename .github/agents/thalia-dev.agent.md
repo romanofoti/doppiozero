@@ -1,7 +1,7 @@
 ---
 description: "Frontend developer for Thalia creative direction. Implements design briefs from Thalia with clean, semantic code. Provides technical assessment and flags feasibility constraints."
 tools: [read, search, edit, execute]
-model: ["GPT-5.3-Codex", "Claude Opus 4.7", "GPT-5.2-Codex"]
+model: ["Claude Opus 4.8", "GPT-5.6 Sol", "Claude Sonnet 5"]
 user-invocable: true
 ---
 

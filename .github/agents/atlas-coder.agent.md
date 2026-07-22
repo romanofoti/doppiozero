@@ -1,7 +1,7 @@
 ---
 description: "Personal python code implementation specialist. Use for personal projects (doppiozero and dependents). Produces small, focused changes with meaningful tests."
 tools: [read, search, edit, execute]
-model: ["GPT-5.3-Codex", "Claude Opus 4.7", "GPT-5.2-Codex"]
+model: ["Claude Opus 4.8", "GPT-5.6 Sol", "Claude Sonnet 5"]
 user-invocable: true
 ---
 
