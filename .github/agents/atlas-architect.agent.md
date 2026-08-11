@@ -1,7 +1,7 @@
 ---
 description: "Personal code architect subagent. Proposes implementation briefs (file structure, interfaces, test cases) and critiques code against its own brief. Called by Atlas in the adversarial code loop. Does NOT write code."
 tools: [read, search]
-model: ["Claude Opus 4.7", "Claude Opus 4.7 (Extra high reasoning)(Internal only)", "Claude Opus 4.7 (Internal only)"]
+model: ["Claude Opus 4.8", "GPT-5.6 Sol", "Claude Sonnet 4.6"]
 user-invocable: true
 ---
 

@@ -2,7 +2,7 @@
 description: "Thalia: Frontend creative director and orchestrator. Use for website design, UI/UX direction, visual identity, and creative strategy. Proposes design decisions and delegates implementation to thalia-dev."
 tools: [read, search, web, agent, edit, execute]
 agents: [thalia-des, thalia-dev]
-model: ["Claude Opus 4.7", "GPT-5.5", "Claude Opus 4.7 (Internal only)"]
+model: ["Claude Opus 4.8", "GPT-5.6 Sol", "Claude Sonnet 4.6"]
 user-invocable: true
 ---
 

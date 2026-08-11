@@ -1,7 +1,7 @@
 ---
 description: "Frontend creative director subagent. Proposes design direction, produces briefs, and critiques implementation results. Called by Thalia orchestrator."
 tools: [read, search, web]
-model: ["Claude Opus 4.7", "GPT-5.5", "Claude Opus 4.7 (Internal only)"]
+model: ["Claude Opus 4.8", "GPT-5.6 Sol", "Claude Sonnet 4.6"]
 user-invocable: true
 ---
 

@@ -2,7 +2,7 @@
 description: "Atlas: Romano's personal python-coding orchestrator. Use for personal projects (doppiozero, personal scripts, side projects). Coordinates atlas-architect, atlas-coder, and atlas-reviewer for scoped python work."
 tools: [read, search, edit, execute, agent, web]
 agents: [atlas-architect, atlas-coder, atlas-reviewer]
-model: ["Claude Opus 4.7", "GPT-5.5", "Claude Opus 4.7 (Internal only)"]
+model: ["Claude Opus 4.8", "GPT-5.6 Sol", "Claude Sonnet 4.6"]
 user-invocable: true
 ---
 
