@@ -1,7 +1,7 @@
 ---
 description: "Personal deep code review specialist. Use when reviewing diffs on personal projects, assessing correctness, flagging over-engineering, evaluating test quality, and checking repo-specific concerns."
 tools: [read, search]
-model: ["Claude Opus 4.8", "GPT-5.6 Sol", "Claude Sonnet 4.6"]
+model: ["Claude Opus 5.5", "GPT-5.6 Sol", "Claude Sonnet 4.6"]
 user-invocable: true
 ---
 
